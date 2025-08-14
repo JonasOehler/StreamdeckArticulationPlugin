@@ -1,0 +1,36 @@
+{
+  "Pacific Strings Violin KS": {
+    "color": "#ff6600",
+    "articulations": [
+      {
+        "name": "Legato",
+        "note": 36
+      },
+      {
+        "name": "Spiccato",
+        "note": 37
+      },
+      {
+        "name": "Staccato",
+        "note": 38
+      },
+      {
+        "name": "Pizzicato",
+        "note": 39
+      }
+    ]
+  },
+  "Cinesamples Brass KS": {
+    "color": "#3366cc",
+    "articulations": [
+      {
+        "name": "Staccato",
+        "note": 12
+      },
+      {
+        "name": "Legato",
+        "note": 14
+      }
+    ]
+  }
+}

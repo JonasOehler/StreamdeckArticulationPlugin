@@ -1,0 +1,40 @@
+{
+  "$schema": "https://schemas.elgato.com/streamdeck/plugins/manifest.json",
+  "UUID": "com.jonasoehler.cubase.articulation",
+  "Author": "Jonas Oehler",
+  "Name": "Cubase Articulations",
+  "Description": "Steuert Articulations via MIDI aus Cubase-Tracknamen, ohne das Stream Deck zu übernehmen.",
+  "Version": "1.0.0.5",
+  "Icon": "assets/icon",
+  "URL": "https://example.com",
+
+  "Actions": [
+    {
+      "Name": "Articulation Key",
+      "UUID": "com.jonasoehler.cubase.articulation.key",
+      "Tooltip": "Sendet eine Articulation (Note) bei Tastendruck",
+      "Icon": "assets/defaultKey",
+      "Controllers": ["Keypad"],
+      "States": [
+        {
+          "Image": "assets/defaultKey",
+          "TitleAlignment": "middle",
+          "FontSize": 14
+        }
+      ],
+      "SupportedInMultiActions": true,
+      "PropertyInspectorPath": "propertyinspector.html"
+    }
+  ],
+
+  "Category": "Cubase",
+  "CategoryIcon": "assets/category",
+  "CodePath": "plugin.js",
+  "SDKVersion": 2,
+  "Software": { "MinimumVersion": "6.6" },
+  "OS": [
+    { "Platform": "mac", "MinimumVersion": "10.15" },
+    { "Platform": "windows", "MinimumVersion": "10" }
+  ],
+  "Nodejs": { "Version": "20" }
+}
