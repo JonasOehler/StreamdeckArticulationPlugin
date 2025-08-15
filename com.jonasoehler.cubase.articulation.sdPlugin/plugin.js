@@ -8,30 +8,28 @@ const path = require("path");
 const { createCanvas, GlobalFonts } = require("@napi-rs/canvas");
 
 /* ---------------------------------------
-   Logging
+   Logging (Konsole + Datei)
 ---------------------------------------- */
 const LOG_PATH = path.join(__dirname, "plugin.log");
 function ts() {
   const d = new Date();
-  const p = (n, w = 2) => String(n).padStart(w, "0");
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(
-    d.getHours()
-  )}:${p(d.getMinutes())}:${p(d.getSeconds())}.${p(d.getMilliseconds(), 3)}`;
+  const pad = (n, w = 2) => String(n).padStart(w, "0");
+  return `[${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(
+    d.getDate()
+  )} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(
+    d.getSeconds()
+  )}.${String(d.getMilliseconds()).padStart(3, "0")}]`;
 }
-function _write(level, msg) {
-  const line = `[${ts()}] ${level} ${msg}\n`;
+function w(line) {
+  const s = `${ts()} ${line}\n`;
   try {
-    fs.appendFileSync(LOG_PATH, line, "utf8");
-  } catch {}
-  // auch in die Stream Deck Logcat
-  if (level.startsWith("[ERR]")) console.error(line.trim());
-  else if (level.startsWith("[WRN]")) console.warn(line.trim());
-  else console.log(line.trim());
+    fs.appendFileSync(LOG_PATH, s);
+  } catch (_) {}
+  try {
+    console.log(line);
+  } catch (_) {}
 }
-const log = (m) => _write("     ", m);
-const dbg = (m) => _write("[DBG]", m);
-const wrn = (m) => _write("[WRN]", m);
-const err = (m) => _write("[ERR]", m);
+w("==== Cubase Articulations Plugin START ====");
 
 /* ---------------------------------------
    Fonts (optional)
@@ -51,14 +49,14 @@ try {
   );
   if (fs.existsSync(fontSemiBold)) {
     GlobalFonts.registerFromPath(fontSemiBold, "Inter-SemiBold");
-    dbg(`Font registriert: ${fontSemiBold}`);
+    w(`[DBG] Font registriert: ${fontSemiBold}`);
   }
   if (fs.existsSync(fontMedium)) {
     GlobalFonts.registerFromPath(fontMedium, "Inter-Medium");
-    dbg(`Font registriert: ${fontMedium}`);
+    w(`[DBG] Font registriert: ${fontMedium}`);
   }
 } catch (e) {
-  wrn(`Konnte Fonts nicht registrieren: ${e && e.message}`);
+  w(`[WRN] Konnte Fonts nicht registrieren: ${e && e.message}`);
 }
 
 /* ---------------------------------------
@@ -69,28 +67,21 @@ const getArg = (f) => {
   const i = args.indexOf(f);
   return i >= 0 ? args[i + 1] : null;
 };
-
 const port = getArg("-port");
 const pluginUUID = getArg("-pluginUUID");
 const registerEvent = getArg("-registerEvent");
 const info = safeJson(getArg("-info")) || {};
-const infoVersion =
-  (info.application && info.application.version) ||
-  (info && info.version) ||
-  "unknown";
-
-log("==== Cubase Articulations Plugin START ====");
-dbg(
-  `Start-Args: ${JSON.stringify({
+w(
+  `[DBG] Start-Args: ${JSON.stringify({
     port,
     pluginUUID,
     registerEvent,
-    infoVersion,
+    infoVersion: info.application?.version || "",
   })}`
 );
 
 if (!port || !pluginUUID || !registerEvent) {
-  err("Fehlende Startparameter (-port/-pluginUUID/-registerEvent).");
+  w("[ERR] Fehlende Startparameter (-port/-pluginUUID/-registerEvent).");
   process.exit(1);
 }
 
@@ -99,6 +90,11 @@ if (!port || !pluginUUID || !registerEvent) {
 ---------------------------------------- */
 const TARGET_MIDI_OUT = "NodeToCubase";
 const TARGET_MIDI_IN = "CubaseToNode";
+
+// CC-Mapping & Kanal-Whitelist für Farbe
+const COLOR_CC = { R: 20, G: 21, B: 22 };
+const COLOR_CH = 14; // 0..15 => Kanal 15
+
 let midiOut = null,
   midiIn = null;
 
@@ -106,45 +102,63 @@ function setupMidi() {
   try {
     const outs = easymidi.getOutputs();
     const ins = easymidi.getInputs();
-    dbg(`[MIDI] Outputs: ${JSON.stringify(outs)}`);
-    dbg(`[MIDI] Inputs : ${JSON.stringify(ins)}`);
+    w(`[DBG] [MIDI] Outputs: ${JSON.stringify(outs)}`);
+    w(`[DBG] [MIDI] Inputs : ${JSON.stringify(ins)}`);
 
     const outName = outs.find((n) => n.includes(TARGET_MIDI_OUT));
     const inName = ins.find((n) => n.includes(TARGET_MIDI_IN));
 
     if (!outName)
-      wrn(`Kein MIDI Out "${TARGET_MIDI_OUT}". Verfügbar: ${outs.join(", ")}`);
+      w(
+        `[WRN] Kein MIDI Out "${TARGET_MIDI_OUT}". Verfügbar: ${outs.join(
+          ", "
+        )}`
+      );
     if (!inName)
-      wrn(`Kein MIDI In "${TARGET_MIDI_IN}". Verfügbar: ${ins.join(", ")}`);
+      w(`[WRN] Kein MIDI In "${TARGET_MIDI_IN}". Verfügbar: ${ins.join(", ")}`);
 
     if (outName) {
       midiOut = new easymidi.Output(outName);
-      log(`MIDI Out verbunden: ${outName}`);
+      w(`MIDI Out verbunden: ${outName}`);
     }
     if (inName) {
       midiIn = new easymidi.Input(inName);
-      log(`MIDI In  verbunden: ${inName}`);
+      w(`MIDI In  verbunden: ${inName}`);
     }
 
     if (midiIn) {
       midiIn.on("sysex", (msg) => {
-        dbg(`[MIDI<-Cubase] SysEx bytes: [${msg.bytes.join(",")}]`);
+        w(`[DBG] [MIDI<-Cubase] SysEx bytes: [${msg.bytes.join(",")}]`);
         onSysexFromCubase(msg.bytes);
       });
       midiIn.on("cc", (msg) => {
-        dbg(
-          `[MIDI<-Cubase] CC ${msg.controller} = ${msg.value} ch ${msg.channel}`
+        // Nur CC 20/21/22 auf Kanal 15 akzeptieren
+        w(
+          `[DBG] [MIDI<-Cubase] CC ${msg.controller} = ${msg.value} ch ${msg.channel}`
         );
+        const isColorCC =
+          msg.controller === COLOR_CC.R ||
+          msg.controller === COLOR_CC.G ||
+          msg.controller === COLOR_CC.B;
+        if (!isColorCC) return;
+        if (msg.channel !== COLOR_CH) {
+          w(
+            `[DBG] [MIDI<-Cubase] Ignoriert (falscher Kanal, erwartet ${
+              COLOR_CH + 1
+            })`
+          );
+          return;
+        }
         onCcFromCubase(msg);
       });
     }
   } catch (e) {
-    err(`MIDI Setup Fehler: ${e && e.stack ? e.stack : e}`);
+    w(`[ERR] MIDI Setup Fehler: ${e && e.message}`);
   }
 }
 
 function sendNote(noteNumber, channel = 0, velocity = 127, lengthMs = 110) {
-  if (!midiOut) return err("Kein MIDI Out aktiv.");
+  if (!midiOut) return w("[ERR] Kein MIDI Out aktiv.");
   midiOut.send("noteon", { note: noteNumber, velocity, channel });
   setTimeout(
     () => midiOut.send("noteoff", { note: noteNumber, velocity: 0, channel }),
@@ -159,15 +173,16 @@ const profilesPath = path.join(__dirname, "profiles.json");
 let profiles = {};
 try {
   profiles = JSON.parse(fs.readFileSync(profilesPath, "utf-8"));
-  log(`Profiles geladen: ${profilesPath}`);
+  w(`Profiles geladen: ${profilesPath}`);
 } catch {
-  wrn("profiles.json nicht gefunden/lesbar – verwende leeres Mapping.");
+  w("[WRN] profiles.json nicht gefunden/lesbar – verwende leeres Mapping.");
   profiles = {};
 }
 
 /* ---------------------------------------
    State je Gerät
 ---------------------------------------- */
+const deviceState = new Map();
 /**
  * deviceState: Map<deviceId, {
  *   contextsByCoord: Map<'c,r', context>,
@@ -178,11 +193,10 @@ try {
  *   instrumentTitle: string
  * }>
  */
-const deviceState = new Map();
 
 const COLS = 8; // Stream Deck XL
-const TITLE_POS = { col: 1, row: 0 }; // Titel-Key: Zeile 1, Taste 2 (Row 0, Col 1)
-const START_ROW_FOR_ARTS = 1; // Artikulationen ab Zeile 2 (Row 1)
+const TITLE_POS = { col: 1, row: 0 }; // Titel-Key (Zeile 1, Taste 2)
+const START_ROW_FOR_ARTS = 1; // Artikulationen ab Zeile 2
 
 /* ---------------------------------------
    WebSocket zur Stream Deck App
@@ -191,7 +205,7 @@ const ws = new WebSocket(`ws://127.0.0.1:${port}`);
 
 ws.on("open", () => {
   ws.send(JSON.stringify({ event: registerEvent, uuid: pluginUUID }));
-  log(
+  w(
     `Stream Deck verbunden & registriert. ${JSON.stringify({
       port,
       pluginUUID,
@@ -207,22 +221,19 @@ ws.on("message", (data) => {
 
 function handleMessage(msg) {
   const { event } = msg;
-  dbg(`[WS<-SD] event: ${event}`);
+  w(`[DBG] [WS<-SD] event: ${event}`);
 
   if (event === "deviceDidConnect") {
     ensureDeviceState(msg.device);
-    log(`Device verbunden: ${msg.device}`);
+    w(`Device verbunden: ${msg.device}`);
   }
-  if (event === "deviceDidDisconnect") {
-    deviceState.delete(msg.device);
-    log(`Device getrennt: ${msg.device}`);
-  }
+  if (event === "deviceDidDisconnect") deviceState.delete(msg.device);
 
   if (event === "willAppear") {
     const st = ensureDeviceState(msg.device);
     const ck = coordKey(msg.payload.coordinates);
-    dbg(`willAppear @ ${ck} context: ${String(msg.context).slice(0, 8)}…`);
     st.contextsByCoord.set(ck, msg.context);
+    w(`[DBG] willAppear @ ${ck} context: ${String(msg.context).slice(0, 8)}…`);
     initialRenderForKey(msg.device, msg.payload.coordinates, msg.context);
   }
 
@@ -241,15 +252,15 @@ function handleMessage(msg) {
 ---------------------------------------- */
 function ensureDeviceState(deviceId) {
   if (!deviceState.has(deviceId)) {
-    dbg(`deviceState init: ${deviceId}`);
     deviceState.set(deviceId, {
       contextsByCoord: new Map(),
       articulations: [],
-      color: "#4B5563", // neutral grau, bis Cubase-Farbe kommt
+      color: "#4B5563", // neutral grau bis Cubase-Farbe kommt
       profileKey: null,
       selectedArtIdx: null,
       instrumentTitle: "",
     });
+    w(`[DBG] deviceState init: ${deviceId}`);
   }
   return deviceState.get(deviceId);
 }
@@ -281,7 +292,7 @@ function initialRenderForKey(deviceId, coord, context) {
       const isSel = st.selectedArtIdx === artIdx;
       renderArtKey(context, art, st.color, isSel);
     } else {
-      renderEmptyKey(context); // absolut leer
+      renderEmptyKey(context);
     }
   } else {
     renderEmptyKey(context);
@@ -292,10 +303,9 @@ function onKeyDown(msg) {
   const st = ensureDeviceState(msg.device);
   const c = msg.payload.coordinates;
 
-  // Titel-Key komplett ignorieren
+  // Titel-Key ignorieren
   if (c.row === TITLE_POS.row && c.column === TITLE_POS.col) return;
 
-  // Nur Artikulationen
   const artIdx = articulationIndexForCoord(c);
   if (artIdx == null) return;
   const art = st.articulations[artIdx];
@@ -308,12 +318,9 @@ function onKeyDown(msg) {
     st.selectedArtIdx = artIdx;
 
     const jobs = [];
-
-    // aktiver Key (invertiert)
     const currentCtx = st.contextsByCoord.get(coordKey(c));
     if (currentCtx) jobs.push(renderArtKey(currentCtx, art, st.color, true));
 
-    // vorherigen Key zurücksetzen
     if (prevIdx != null && prevIdx !== artIdx) {
       for (const [coordStr, ctx] of st.contextsByCoord) {
         const [col, row] = coordStr.split(",").map(Number);
@@ -336,7 +343,7 @@ function onKeyUp(/* msg */) {
 }
 
 /* ---------------------------------------
-   Cubase: Trackname (SysEx) & Farbe (CC)
+   Cubase: Trackname (SysEx) & Farbe (CC 20/21/22 auf Kanal 15)
 ---------------------------------------- */
 let lastTrackName = "";
 let debounceTimer = null;
@@ -344,7 +351,7 @@ let debounceTimer = null;
 function onSysexFromCubase(bytes) {
   if (bytes[0] !== 0xf0 || bytes[bytes.length - 1] !== 0xf7) return;
   const trackName = String.fromCharCode(...bytes.slice(1, -1)).trim();
-  dbg(`[TRACK] Name (SysEx): "${trackName}"`);
+  w(`[DBG] [TRACK] Name (SysEx): "${trackName}"`);
   if (!trackName || trackName.toLowerCase() === lastTrackName.toLowerCase())
     return;
 
@@ -353,12 +360,12 @@ function onSysexFromCubase(bytes) {
   debounceTimer = setTimeout(() => applyProfileForTrack(trackName), 120);
 }
 
-// Farbe via CC#20 (R), #21 (G), #22 (B) [0..127]
+// Farbe via CC#20 (R), #21 (G), #22 (B) [0..127] – nur auf Kanal 15
 const colorState = { r: null, g: null, b: null, timer: null };
-function onCcFromCubase({ controller, value /* 0..127 */ }) {
-  if (controller === 20) colorState.r = value;
-  else if (controller === 21) colorState.g = value;
-  else if (controller === 22) colorState.b = value;
+function onCcFromCubase({ controller, value, channel }) {
+  if (controller === COLOR_CC.R) colorState.r = value;
+  else if (controller === COLOR_CC.G) colorState.g = value;
+  else if (controller === COLOR_CC.B) colorState.b = value;
   else return;
 
   if (colorState.timer) clearTimeout(colorState.timer);
@@ -367,31 +374,30 @@ function onCcFromCubase({ controller, value /* 0..127 */ }) {
       g = to255(colorState.g),
       b = to255(colorState.b);
     if ([r, g, b].some((x) => x == null)) return;
-
-    const hexRaw = rgbToHex(r, g, b);
-    const hexUsed = compensateDeviceColor(hexRaw);
-    log(
-      `[COLOR] Spurfarbe gesetzt: ${hexUsed} (raw ${hexRaw}) (R${r} G${g} B${b})`
-    );
+    const hex = rgbToHex(r, g, b);
+    w(`[COLOR] Spurfarbe gesetzt: ${hex} (R${r} G${g} B${b})`);
 
     for (const [deviceId, st] of deviceState) {
-      st.color = hexUsed; // **einzige** Farbquelle
-      dbg(
-        `[render] device: ${deviceId} | title: "${st.instrumentTitle}" | color: ${st.color} | arts: ${st.articulations.length}`
-      );
+      st.color = hex;
       renderProfileForDevice(deviceId);
     }
-  }, 30);
+  }, 25);
 }
 
 function to255(v) {
   return typeof v === "number" ? Math.round((v / 127) * 255) : null;
 }
+function rgbToHex(r, g, b) {
+  const toHex = (x) => x.toString(16).padStart(2, "0");
+  return `#${toHex(Math.max(0, Math.min(255, r)))}${toHex(
+    Math.max(0, Math.min(255, g))
+  )}${toHex(Math.max(0, Math.min(255, b)))}`;
+}
 
 function applyProfileForTrack(trackName) {
-  // Nur laden, wenn der Name **am Ende** „KS“ hat (z. B. „… Violin KS“)
+  // Nur laden, wenn der Name **am Ende** „KS“ hat
   if (!/\bKS\b$/i.test(trackName.trim())) {
-    log(`⏭ Überspringe Spur ohne 'KS' am Ende: "${trackName}"`);
+    w(`⏭ Überspringe Spur ohne 'KS' am Ende: "${trackName}"`);
     return;
   }
 
@@ -399,30 +405,22 @@ function applyProfileForTrack(trackName) {
     new RegExp(k, "i").test(trackName)
   );
   const profile = key ? profiles[key] || {} : {};
-
-  // **keine** Farbe mehr aus dem Profil
   const arts = (profile.articulations || []).map((a) => ({
     name: a.name || "",
     note: a.note,
   }));
-
-  // Titel aus Trackname ableiten (trailing „KS“ entfernen)
   const title = extractInstrumentTitle(trackName);
-
-  log(
-    `[PROFILE] Match: ${key || "(none)"} | Arts: ${
-      arts.length
-    } | Title: "${title}"`
-  );
 
   for (const [deviceId, st] of deviceState) {
     st.profileKey = key || null;
     st.articulations = arts;
-    // st.color bleibt unangetastet – wird nur durch CC gesetzt
+    // st.color bleibt, kommt nur aus CC
     st.instrumentTitle = title;
-    st.selectedArtIdx = null; // Reset Auswahl
-    dbg(
-      `[render] device: ${deviceId} | title: "${st.instrumentTitle}" | color: ${st.color} | arts: ${st.articulations.length}`
+    st.selectedArtIdx = null;
+    w(
+      `[PROFILE] Match: ${key || "(none)"} | Arts: ${
+        arts.length
+      } | Title: "${title}"`
     );
     renderProfileForDevice(deviceId);
   }
@@ -431,6 +429,12 @@ function applyProfileForTrack(trackName) {
 async function renderProfileForDevice(deviceId) {
   const st = deviceState.get(deviceId);
   if (!st) return;
+
+  w(
+    `[DBG] [render] device: ${deviceId} | title: "${
+      st.instrumentTitle || ""
+    }" | color: ${st.color} | arts: ${st.articulations.length}`
+  );
 
   const tasks = [];
   st.contextsByCoord.forEach((context, coordStr) => {
@@ -457,16 +461,39 @@ async function renderProfileForDevice(deviceId) {
    Rendering
 ---------------------------------------- */
 const IMG_SIZE = 96;
-const HEADER_H = 8; // Artikulations-Headerhöhe (sichtbar nur bei Art)
-const MAIN_FONT_SIZE = 16; // Artikulations-Label
-const BADGE_FONT_SIZE = 10; // Badge-Schriftgröße
-const TITLE_FONT_SIZE = 18; // Titel
+const HEADER_H = 8;
+const MAIN_FONT_SIZE = 16;
+const BADGE_FONT_SIZE = 10;
+const TITLE_FONT_SIZE = 18;
 const TITLE_LINE_HEIGHT = 1.22;
 
 // Caches
 const CACHE_ART = new Map();
 const CACHE_TTL = new Map();
 const CACHE_EMP = new Map();
+
+/* ---------- Helpers für Farben/Text-Kontrast ---------- */
+function hexToRgb(hex) {
+  const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex || "");
+  if (!m) return { r: 0, g: 0, b: 0 };
+  return {
+    r: parseInt(m[1], 16),
+    g: parseInt(m[2], 16),
+    b: parseInt(m[3], 16),
+  };
+}
+function relLuminance({ r, g, b }) {
+  const srgb = [r, g, b].map((v) => v / 255);
+  const lin = srgb.map((v) =>
+    v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4)
+  );
+  return 0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2];
+}
+function contrastOn(hexColor) {
+  const L = relLuminance(hexToRgb(hexColor));
+  // Schwelle ~0.53 liefert in der Praxis bessere Lesbarkeit auf knalligen Farbtönen
+  return L > 0.53 ? "#111111" : "#FFFFFF";
+}
 
 /* ---------- Leerer Key ---------- */
 function renderEmptyKey(context) {
@@ -480,7 +507,7 @@ function renderEmptyKey(context) {
   setImage(context, dataUrl);
 }
 
-/* ---------- Titel-Key: volle Fläche + exakte Zentrierung + Kontrast ---------- */
+/* ---------- Titel-Key (volle Fläche, zentriert, adaptive Schriftfarbe) ---------- */
 function renderTitleKey(context, titleText, color = "#4B5563") {
   const key = JSON.stringify({
     t: titleText || "",
@@ -497,30 +524,19 @@ function renderTitleKey(context, titleText, color = "#4B5563") {
   ctx.fillStyle = color;
   ctx.fillRect(0, 0, IMG_SIZE, IMG_SIZE);
 
-  // Kontrastabhängige Textfarbe
-  const textFill = pickTextForBg(color);
-  ctx.fillStyle = textFill;
-  if (textFill === "#FFFFFF") {
-    ctx.shadowColor = "rgba(0,0,0,0.35)";
-    ctx.shadowBlur = 2.0;
-    ctx.shadowOffsetX = 0;
-    ctx.shadowOffsetY = 0;
-  } else {
-    ctx.shadowColor = "transparent";
-    ctx.shadowBlur = 0;
-  }
-
-  // Typo
   const hasInterMed = GlobalFonts.has("Inter-Medium");
   const baseFamily = hasInterMed ? "Inter-Medium" : "Segoe UI";
   ctx.font = `${TITLE_FONT_SIZE}px "${baseFamily}"`;
+  ctx.fillStyle = contrastOn(color);
   ctx.textAlign = "center";
   ctx.textBaseline = "alphabetic";
 
-  // Split bei Spaces, zu lange Wörter ellipsen
-  const maxWidth = IMG_SIZE - 10; // 5px links/rechts
-  const wordsRaw = String(titleText || "").trim();
-  const words = wordsRaw.split(/\s+/).filter(Boolean);
+  // Split bei Spaces, lange Wörter ellipsen
+  const maxWidth = IMG_SIZE - 10;
+  const words = String(titleText || "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
   if (words.length === 0) words.push("");
 
   const lines = words.map((w) =>
@@ -529,7 +545,7 @@ function renderTitleKey(context, titleText, color = "#4B5563") {
       : ellipsizeToWidth(ctx, w, maxWidth)
   );
 
-  // Zeilenmetriken
+  // Metriken + vertikale Zentrierung
   const lineMetrics = lines.map((line) => {
     const m = ctx.measureText(line || " ");
     const asc = Number.isFinite(m.actualBoundingBoxAscent)
@@ -538,30 +554,24 @@ function renderTitleKey(context, titleText, color = "#4B5563") {
     const desc = Number.isFinite(m.actualBoundingBoxDescent)
       ? m.actualBoundingBoxDescent
       : TITLE_FONT_SIZE * 0.2;
-    const lineGap = Math.max(0, TITLE_FONT_SIZE * (TITLE_LINE_HEIGHT - 1));
-    return { asc, desc, lineGap, width: m.width };
+    const gap = Math.max(0, TITLE_FONT_SIZE * (TITLE_LINE_HEIGHT - 1));
+    return { asc, desc, gap, width: m.width };
   });
 
-  // Gesamtblock-Höhe
-  let totalHeight = 0;
+  let totalH = 0;
   for (let i = 0; i < lineMetrics.length; i++) {
-    totalHeight += lineMetrics[i].asc + lineMetrics[i].desc;
-    if (i < lineMetrics.length - 1) totalHeight += lineMetrics[i].lineGap;
+    totalH += lineMetrics[i].asc + lineMetrics[i].desc;
+    if (i < lineMetrics.length - 1) totalH += lineMetrics[i].gap;
   }
-
-  // Vertikal exakt zentrieren
-  let yTop = (IMG_SIZE - totalHeight) / 2;
-  let cursorY = yTop;
+  let cursorY = (IMG_SIZE - totalH) / 2;
 
   for (let i = 0; i < lines.length; i++) {
     const lm = lineMetrics[i];
     let text = lines[i];
     if (lm.width > maxWidth) text = ellipsizeToWidth(ctx, text, maxWidth);
-
-    const baselineY = cursorY + lm.asc; // alphabetic baseline
+    const baselineY = cursorY + lm.asc;
     ctx.fillText(text, IMG_SIZE / 2, Math.round(baselineY));
-
-    cursorY += lm.asc + lm.desc + lm.lineGap;
+    cursorY += lm.asc + lm.desc + lm.gap;
     if (cursorY > IMG_SIZE) break;
   }
 
@@ -572,7 +582,7 @@ function renderTitleKey(context, titleText, color = "#4B5563") {
 
 /* ---------- Artikulations-Key ---------- */
 /*  Unselected:  BG transparent, Header = Spurfarbe, Text = Weiß, Badge dunkel
-    Selected  :  BG transparent, Header = Weiß, Text = Spurfarbe, Badge invertiert (lesbar) */
+    Selected  :  BG transparent, Header = Weiß, Text = Spurfarbe, Badge invertiert */
 function renderArtKey(context, art, color = "#4B5563", selected = false) {
   if (!hasArt(art)) return renderEmptyKey(context);
 
@@ -590,10 +600,8 @@ function renderArtKey(context, art, color = "#4B5563", selected = false) {
   const canvas = createCanvas(IMG_SIZE, IMG_SIZE);
   const ctx = canvas.getContext("2d");
 
-  // Hintergrund transparent
   ctx.clearRect(0, 0, IMG_SIZE, IMG_SIZE);
 
-  // Farben je nach Auswahl
   const headerColor = selected ? "#FFFFFF" : color;
   const textColor = selected ? color : "#FFFFFF";
 
@@ -605,7 +613,7 @@ function renderArtKey(context, art, color = "#4B5563", selected = false) {
   const hasInterSemi = GlobalFonts.has("Inter-SemiBold");
   const mainFamily = hasInterSemi ? "Inter-SemiBold" : "Segoe UI Semibold";
 
-  // Haupt-Label (fixe Größe, Ellipsis)
+  // Haupt-Label
   const label = (art?.name || "").toUpperCase();
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
@@ -619,25 +627,24 @@ function renderArtKey(context, art, color = "#4B5563", selected = false) {
   const areaCenterY = areaTop + 18;
   ctx.fillText(fitted, IMG_SIZE / 2, areaCenterY);
 
-  // Note-Badge (invertiert bei Auswahl)
+  // Note-Badge
   if (Number.isInteger(art?.note)) {
     const badgeText = noteBadgeText(art.note);
     ctx.font = `${BADGE_FONT_SIZE}px "${mainFamily}"`;
     const padX = 6,
       padY = 3,
       h = 16;
-    const w = Math.ceil(ctx.measureText(badgeText).width) + padX * 2;
-    const x = IMG_SIZE - 8 - w;
+    const wText = Math.ceil(ctx.measureText(badgeText).width);
+    const wBox = wText + padX * 2;
+    const x = IMG_SIZE - 8 - wBox;
     const y = IMG_SIZE - 8 - h;
 
     if (selected) {
-      // invertiert: weißer Hintergrund, farbiger Text (ggf. abdunkeln)
-      roundRect(ctx, x, y, w, h, 4, "#FFFFFF", 1);
-      const readable = ensureReadableOnWhite(color);
-      ctx.fillStyle = readable;
+      // invertiert
+      roundRect(ctx, x, y, wBox, h, 4, "#FFFFFF", 1);
+      ctx.fillStyle = color;
     } else {
-      // normal: dunkles Badge, weißer Text
-      roundRect(ctx, x, y, w, h, 4, "#111827", 0.9);
+      roundRect(ctx, x, y, wBox, h, 4, "#111827", 0.9);
       ctx.fillStyle = "rgba(255,255,255,0.95)";
     }
     ctx.textAlign = "left";
@@ -651,7 +658,7 @@ function renderArtKey(context, art, color = "#4B5563", selected = false) {
 }
 
 /* ---------------------------------------
-   Draw & Color Helpers
+   Draw Helpers
 ---------------------------------------- */
 function setImage(context, base64) {
   ws.send(
@@ -711,133 +718,14 @@ function ellipsizeToWidth(ctx, text, maxWidth) {
   return t ? t + "…" : "";
 }
 
-// Trackname → Titel (trailing „KS“ & Klammern/Suffixe entfernen)
 function extractInstrumentTitle(trackName) {
   if (!trackName) return "";
   return trackName
-    .replace(/\bKS\b\s*$/i, "") // nur am Ende entfernen
-    .replace(/\s*-\s*.*/g, "") // alles nach " - " entfernen
-    .replace(/\s*\(.*?\)\s*/g, "") // Klammerzusätze
+    .replace(/\bKS\b\s*$/i, "")
+    .replace(/\s*-\s*.*/g, "")
+    .replace(/\s*\(.*?\)\s*/g, "")
     .replace(/\s{2,}/g, " ")
     .trim();
-}
-
-/* ---------- Color/Contrast utils ---------- */
-function hexToRgb(hex) {
-  const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-  if (!m) return { r: 0, g: 0, b: 0 };
-  return {
-    r: parseInt(m[1], 16),
-    g: parseInt(m[2], 16),
-    b: parseInt(m[3], 16),
-  };
-}
-function rgbToHex(r, g, b) {
-  const h = (x) => Math.max(0, Math.min(255, x)).toString(16).padStart(2, "0");
-  return `#${h(r)}${h(g)}${h(b)}`;
-}
-function srgbToLinear(c) {
-  c /= 255;
-  return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
-}
-function relativeLuminance({ r, g, b }) {
-  const R = srgbToLinear(r),
-    G = srgbToLinear(g),
-    B = srgbToLinear(b);
-  return 0.2126 * R + 0.7152 * G + 0.0722 * B;
-}
-function contrastRatioHex(bgHex, fgHex) {
-  const L1 = relativeLuminance(hexToRgb(bgHex));
-  const L2 = relativeLuminance(hexToRgb(fgHex));
-  const lighter = Math.max(L1, L2),
-    darker = Math.min(L1, L2);
-  return (lighter + 0.05) / (darker + 0.05);
-}
-function pickTextForBg(bgHex) {
-  // wähle Weiß, außer der Kontrast ist schlecht -> Schwarz
-  return contrastRatioHex(bgHex, "#FFFFFF") >= 3.0 ? "#FFFFFF" : "#111111";
-}
-function rgbToHsl(r, g, b) {
-  r /= 255;
-  g /= 255;
-  b /= 255;
-  const max = Math.max(r, g, b),
-    min = Math.min(r, g, b);
-  let h,
-    s,
-    l = (max + min) / 2;
-  if (max === min) {
-    h = 0;
-    s = 0;
-  } else {
-    const d = max - min;
-    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-    switch (max) {
-      case r:
-        h = (g - b) / d + (g < b ? 6 : 0);
-        break;
-      case g:
-        h = (b - r) / d + 2;
-        break;
-      case b:
-        h = (r - g) / d + 4;
-        break;
-    }
-    h /= 6;
-  }
-  return { h, s, l };
-}
-function hslToRgb(h, s, l) {
-  let r, g, b;
-  if (s === 0) {
-    r = g = b = l;
-  } else {
-    const hue2rgb = (p, q, t) => {
-      if (t < 0) t += 1;
-      if (t > 1) t -= 1;
-      if (t < 1 / 6) return p + (q - p) * 6 * t;
-      if (t < 1 / 2) return q;
-      if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
-      return p;
-    };
-    const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
-    const p = 2 * l - q;
-    r = hue2rgb(p, q, h + 1 / 3);
-    g = hue2rgb(p, q, h);
-    b = hue2rgb(p, q, h - 1 / 3);
-  }
-  return {
-    r: Math.round(r * 255),
-    g: Math.round(g * 255),
-    b: Math.round(b * 255),
-  };
-}
-function darkenHex(hex, amt /*0..1*/) {
-  const { r, g, b } = hexToRgb(hex);
-  const { h, s, l } = rgbToHsl(r, g, b);
-  const l2 = Math.max(0, l - amt);
-  const nrgb = hslToRgb(h, s, l2);
-  return rgbToHex(nrgb.r, nrgb.g, nrgb.b);
-}
-function ensureReadableOnWhite(colorHex) {
-  if (contrastRatioHex("#FFFFFF", colorHex) >= 4.5) return colorHex;
-  let c = colorHex;
-  for (let i = 0; i < 6; i++) {
-    c = darkenHex(c, 0.06);
-    if (contrastRatioHex("#FFFFFF", c) >= 4.5) return c;
-  }
-  return "#111827";
-}
-// (Optional) kleine Sättigungs-/Helligkeitskorrektur fürs Panel
-const COLOR_COMP = { enable: false, satBoost: 0.1, lightShift: -0.02 };
-function compensateDeviceColor(hex) {
-  if (!COLOR_COMP.enable) return hex;
-  const { r, g, b } = hexToRgb(hex);
-  const hsl = rgbToHsl(r, g, b);
-  const s = Math.max(0, Math.min(1, hsl.s + COLOR_COMP.satBoost));
-  const l = Math.max(0, Math.min(1, hsl.l + COLOR_COMP.lightShift));
-  const nrgb = hslToRgb(hsl.h, s, l);
-  return rgbToHex(nrgb.r, nrgb.g, nrgb.b);
 }
 
 /* ---------------------------------------
@@ -851,9 +739,6 @@ function safeJson(x) {
   }
 }
 
-process.on("uncaughtException", (e) => {
-  err(`uncaughtException: ${e && e.stack ? e.stack : e}`);
-});
 process.on("exit", () => {
   try {
     midiOut && midiOut.close();
