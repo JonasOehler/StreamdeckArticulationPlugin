@@ -5,22 +5,25 @@
     <title>Articulation Key</title>
     <style>
       body {
-        font-family: sans-serif;
-        padding: 10px;
+        font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+        padding: 12px;
+        color: #e5e7eb;
+        background: #0b0f13;
       }
-      label {
-        display: block;
-        margin: 0.5rem 0;
+      .muted {
+        color: #9ca3af;
+        font-size: 12px;
+        line-height: 1.4;
       }
     </style>
   </head>
   <body>
-    <label>
-      Titel:
-      <input id="title" type="text" placeholder="Beschriftung auf der Taste" />
-    </label>
-    <button id="save">Speichern</button>
-
-    <script src="propertyinspector.js"></script>
+    <div class="muted">
+      Dieses Plugin wird automatisch über <code>profiles.json</code> &amp;
+      Cubase-Tracknamen konfiguriert. Es gibt keine Einstellungen pro Taste.
+    </div>
+    <script>
+      // absichtlich leer – keine get/setSettings Aufrufe
+    </script>
   </body>
 </html>
