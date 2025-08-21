@@ -3,8 +3,8 @@
   "UUID": "com.jonasoehler.cubase.articulation",
   "Author": "Jonas Oehler",
   "Name": "Cubase Articulations",
-  "Description": "Steuert Articulations via MIDI aus Cubase-Tracknamen, ohne das Stream Deck zu übernehmen.",
-  "Version": "1.0.0.8",
+  "Description": "Steuert Articulations via MIDI aus Cubase-Tracknamen und bietet zusätzliche Command-Tasten.",
+  "Version": "1.2.0",
   "Icon": "assets/icon",
   "URL": "https://example.com",
 
@@ -15,14 +15,39 @@
       "Tooltip": "Sendet eine Articulation (Note) bei Tastendruck",
       "Icon": "assets/defaultKey",
       "Controllers": ["Keypad"],
-      "UserTitleEnabled": false,
       "States": [
         {
           "Image": "assets/defaultKey",
-          "ShowTitle": false
+          "ShowTitle": false,
+          "TitleAlignment": "middle",
+          "FontSize": 14
         }
       ],
       "SupportedInMultiActions": true
+    },
+
+    {
+      "Name": "Cubase Command",
+      "UUID": "com.jonasoehler.cubase.command",
+      "Tooltip": "MIDI-CC Slot mit Status (2 States). Icons pro State in der SD-Software wählbar.",
+      "Icon": "assets/commandKey",
+      "Controllers": ["Keypad"],
+      "States": [
+        {
+          "Image": "assets/command/inactive",
+          "ShowTitle": false,
+          "TitleAlignment": "middle",
+          "FontSize": 14
+        },
+        {
+          "Image": "assets/command/active",
+          "ShowTitle": false,
+          "TitleAlignment": "middle",
+          "FontSize": 14
+        }
+      ],
+      "SupportedInMultiActions": true,
+      "PropertyInspectorPath": "pi-command.html"
     }
   ],
 
