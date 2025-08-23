@@ -108,43 +108,4 @@ trackMeta.mOnColorChange = function (activeDevice, r, g, b /*, a, isActive */) {
   );
 };
 
-// -------------------------------------------------
-// 32 neutrale CC-Slots (alles per Mapping-Assistent)
-// -------------------------------------------------
-var CONTROL_CH = 13; // 0..15 => "Kanal 14"
-var CC_FIRST = 10,
-  CC_LAST = 41; // inkl. -> 32 Stück
-var COLS = 8;
-
-// Ein Button = ein Slot (CC auf CONTROL_CH) – mit Input+Output für Feedback
-function makeCcButton(x, y, w, h, cc) {
-  var btn = deviceDriver.mSurface.makeButton(x, y, w, h);
-
-  var ccBind = btn.mSurfaceValue.mMidiBinding
-    .setInputPort(midiInput) // vom Plugin kommend
-    .setOutputPort(midiOutput) // Feedback zurück ans Plugin
-    .setIsConsuming(true) // verhindert Durchreichen ins Projekt
-    .bindToControlChange(CONTROL_CH, cc);
-
-  // Host 0..1 ↔ MIDI 0..127 (saubere 0/127 Rückmeldung)
-  ccBind.setValueRange(0, 127);
-
-  // Optional: Log
-  btn.mSurfaceValue.mOnProcessValueChange = function (_, val) {
-    if (val > 0) log("[REMOTE] CC " + cc + " pressed");
-  };
-
-  // KEINE Host/Command-Bindings hier – das macht der Mapping-Assistent!
-  return btn;
-}
-
-// Layout 8x4 (CC 10..41)
-var idx = 0;
-for (var cc = CC_FIRST; cc <= CC_LAST; cc++) {
-  var x = idx % COLS;
-  var y = Math.floor(idx / COLS);
-  makeCcButton(x, y, 1, 1, cc);
-  idx++;
-}
-
 module.exports = deviceDriver;
