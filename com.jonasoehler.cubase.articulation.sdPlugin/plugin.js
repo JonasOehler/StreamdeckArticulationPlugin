@@ -394,33 +394,41 @@ function rgbToHex(r, g, b) {
   )}${toHex(Math.max(0, Math.min(255, b)))}`;
 }
 
+// *** ANGEPASST: Titel immer setzen, Arts nur wenn "KS" vorhanden ***
 function applyProfileForTrack(trackName) {
-  // Nur laden, wenn der Name **am Ende** „KS“ hat
-  if (!/\bKS\b$/i.test(trackName.trim())) {
-    w(`⏭ Überspringe Spur ohne 'KS' am Ende: "${trackName}"`);
-    return;
+  const trimmed = String(trackName || "").trim();
+  const hasKS = /\bKS\b$/i.test(trimmed);
+
+  // Titel immer aus Trackname extrahieren (unabhängig von KS)
+  const title = extractInstrumentTitle(trimmed);
+
+  // Nur bei KS: Profil suchen & Artikulationen übernehmen
+  let key = null;
+  let arts = [];
+  if (hasKS) {
+    key =
+      Object.keys(profiles).find((k) => new RegExp(k, "i").test(trimmed)) ||
+      null;
+    const profile = key ? profiles[key] || {} : {};
+    arts = (profile.articulations || []).map((a) => ({
+      name: a.name || "",
+      note: a.note,
+    }));
+  } else {
+    w(
+      `⏭ Spur ohne "KS": Articulation-Keys werden geleert. Titel wird gesetzt: "${title}"`
+    );
   }
 
-  const key = Object.keys(profiles).find((k) =>
-    new RegExp(k, "i").test(trackName)
-  );
-  const profile = key ? profiles[key] || {} : {};
-  const arts = (profile.articulations || []).map((a) => ({
-    name: a.name || "",
-    note: a.note,
-  }));
-  const title = extractInstrumentTitle(trackName);
-
   for (const [deviceId, st] of deviceState) {
-    st.profileKey = key || null;
-    st.articulations = arts;
-    // st.color bleibt, kommt nur aus CC
-    st.instrumentTitle = title;
-    st.selectedArtIdx = null;
+    st.profileKey = hasKS ? key : null;
+    st.articulations = hasKS ? arts : []; // <- leeren, wenn kein KS
+    st.instrumentTitle = title; // <- Titel immer aktualisieren
+    st.selectedArtIdx = null; // <- Auswahl zurücksetzen
     w(
-      `[PROFILE] Match: ${key || "(none)"} | Arts: ${
-        arts.length
-      } | Title: "${title}"`
+      `[PROFILE] KS=${hasKS ? "yes" : "no"} | Match: ${
+        key || "(none)"
+      } | Arts: ${st.articulations.length} | Title: "${title}"`
     );
     renderProfileForDevice(deviceId);
   }
