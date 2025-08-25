@@ -1,0 +1,763 @@
+{
+    "api": "midiremote",
+    "version": "1.0",
+    "objects": {
+        "root": 88,
+        "internal": [
+            {
+                "id": 1,
+                "type": "DeviceDriver",
+                "members": {
+                    "VendorName": "Elgato",
+                    "DeviceName": "StreamDeckXLGeneric",
+                    "CreatedBy": "JonasOehler",
+                    "DetectionUnits": [
+                        48
+                    ],
+                    "Ports": 2,
+                    "Surface": 3,
+                    "Mapping": 4
+                }
+            },
+            {
+                "id": 2,
+                "type": "Ports",
+                "members": {
+                    "MidiInputs": [
+                        5
+                    ],
+                    "MidiOutputs": [
+                        6
+                    ]
+                }
+            },
+            {
+                "id": 3,
+                "type": "Surface",
+                "members": {
+                    "SurfaceElements": [
+                        12,
+                        18,
+                        24,
+                        30,
+                        36,
+                        42,
+                        52,
+                        58,
+                        64,
+                        70,
+                        76
+                    ]
+                }
+            },
+            {
+                "id": 4,
+                "type": "FactoryMapping",
+                "members": {
+                    "Pages": [
+                        7
+                    ]
+                }
+            },
+            {
+                "id": 5,
+                "type": "DeviceMidiInput",
+                "members": {
+                    "Name": ""
+                }
+            },
+            {
+                "id": 6,
+                "type": "DeviceMidiOutput",
+                "members": {
+                    "Name": ""
+                }
+            },
+            {
+                "id": 7,
+                "type": "FactoryMappingPage",
+                "members": {
+                    "Name": "Default",
+                    "HostAccess": 8
+                }
+            },
+            {
+                "id": 8,
+                "type": "HostAccess"
+            },
+            {
+                "id": 9,
+                "type": "TransportTimeDisplay",
+                "members": {
+                    "Primary": 10,
+                    "Secondary": 11
+                }
+            },
+            {
+                "id": 10,
+                "type": "TransportTimeDisplayDetailsPrimary"
+            },
+            {
+                "id": 11,
+                "type": "TransportTimeDisplayDetailsSecondary"
+            },
+            {
+                "id": 12,
+                "type": "TriggerPad",
+                "members": {
+                    "Rect": {
+                        "X": 0.0,
+                        "Y": 2.0,
+                        "W": 2.0,
+                        "H": 2.0
+                    },
+                    "SurfaceValue": 13
+                }
+            },
+            {
+                "id": 13,
+                "type": "SurfaceElementValue",
+                "members": {
+                    "MidiBinding": 14,
+                    "TouchState": 15
+                }
+            },
+            {
+                "id": 14,
+                "type": "SurfaceValueMidiBinding",
+                "members": {
+                    "InputPort": 5,
+                    "OutputPort": 6,
+                    "IsConsuming": true,
+                    "MidiChannelBinding": 16
+                }
+            },
+            {
+                "id": 15,
+                "type": "SurfaceValueTouchState"
+            },
+            {
+                "id": 16,
+                "type": "MidiBindingToControlChange",
+                "members": {
+                    "ChannelNumber": 1,
+                    "ControlChangeNumber": 20,
+                    "Type": "Absolute",
+                    "ValueRange": 17
+                }
+            },
+            {
+                "id": 17,
+                "type": "MidiBindingValueRange7Bit",
+                "members": {
+                    "Min": 0,
+                    "Max": 127
+                }
+            },
+            {
+                "id": 18,
+                "type": "TriggerPad",
+                "members": {
+                    "Rect": {
+                        "X": 2.0,
+                        "Y": 2.0,
+                        "W": 2.0,
+                        "H": 2.0
+                    },
+                    "SurfaceValue": 19
+                }
+            },
+            {
+                "id": 19,
+                "type": "SurfaceElementValue",
+                "members": {
+                    "MidiBinding": 20,
+                    "TouchState": 21
+                }
+            },
+            {
+                "id": 20,
+                "type": "SurfaceValueMidiBinding",
+                "members": {
+                    "InputPort": 5,
+                    "OutputPort": 6,
+                    "IsConsuming": true,
+                    "MidiChannelBinding": 22
+                }
+            },
+            {
+                "id": 21,
+                "type": "SurfaceValueTouchState"
+            },
+            {
+                "id": 22,
+                "type": "MidiBindingToControlChange",
+                "members": {
+                    "ChannelNumber": 1,
+                    "ControlChangeNumber": 21,
+                    "Type": "Absolute",
+                    "ValueRange": 23
+                }
+            },
+            {
+                "id": 23,
+                "type": "MidiBindingValueRange7Bit",
+                "members": {
+                    "Min": 0,
+                    "Max": 127
+                }
+            },
+            {
+                "id": 24,
+                "type": "TriggerPad",
+                "members": {
+                    "Rect": {
+                        "X": 4.0,
+                        "Y": 2.0,
+                        "W": 2.0,
+                        "H": 2.0
+                    },
+                    "SurfaceValue": 25
+                }
+            },
+            {
+                "id": 25,
+                "type": "SurfaceElementValue",
+                "members": {
+                    "MidiBinding": 26,
+                    "TouchState": 27
+                }
+            },
+            {
+                "id": 26,
+                "type": "SurfaceValueMidiBinding",
+                "members": {
+                    "InputPort": 5,
+                    "OutputPort": 6,
+                    "IsConsuming": true,
+                    "MidiChannelBinding": 28
+                }
+            },
+            {
+                "id": 27,
+                "type": "SurfaceValueTouchState"
+            },
+            {
+                "id": 28,
+                "type": "MidiBindingToControlChange",
+                "members": {
+                    "ChannelNumber": 1,
+                    "ControlChangeNumber": 22,
+                    "Type": "Absolute",
+                    "ValueRange": 29
+                }
+            },
+            {
+                "id": 29,
+                "type": "MidiBindingValueRange7Bit",
+                "members": {
+                    "Min": 0,
+                    "Max": 127
+                }
+            },
+            {
+                "id": 30,
+                "type": "TriggerPad",
+                "members": {
+                    "Rect": {
+                        "X": 6.0,
+                        "Y": 2.0,
+                        "W": 2.0,
+                        "H": 2.0
+                    },
+                    "SurfaceValue": 31
+                }
+            },
+            {
+                "id": 31,
+                "type": "SurfaceElementValue",
+                "members": {
+                    "MidiBinding": 32,
+                    "TouchState": 33
+                }
+            },
+            {
+                "id": 32,
+                "type": "SurfaceValueMidiBinding",
+                "members": {
+                    "InputPort": 5,
+                    "OutputPort": 6,
+                    "IsConsuming": true,
+                    "MidiChannelBinding": 34
+                }
+            },
+            {
+                "id": 33,
+                "type": "SurfaceValueTouchState"
+            },
+            {
+                "id": 34,
+                "type": "MidiBindingToControlChange",
+                "members": {
+                    "ChannelNumber": 1,
+                    "ControlChangeNumber": 23,
+                    "Type": "Absolute",
+                    "ValueRange": 35
+                }
+            },
+            {
+                "id": 35,
+                "type": "MidiBindingValueRange7Bit",
+                "members": {
+                    "Min": 0,
+                    "Max": 127
+                }
+            },
+            {
+                "id": 36,
+                "type": "TriggerPad",
+                "members": {
+                    "Rect": {
+                        "X": 8.0,
+                        "Y": 2.0,
+                        "W": 2.0,
+                        "H": 2.0
+                    },
+                    "SurfaceValue": 37
+                }
+            },
+            {
+                "id": 37,
+                "type": "SurfaceElementValue",
+                "members": {
+                    "MidiBinding": 38,
+                    "TouchState": 39
+                }
+            },
+            {
+                "id": 38,
+                "type": "SurfaceValueMidiBinding",
+                "members": {
+                    "InputPort": 5,
+                    "OutputPort": 6,
+                    "IsConsuming": true,
+                    "MidiChannelBinding": 40
+                }
+            },
+            {
+                "id": 39,
+                "type": "SurfaceValueTouchState"
+            },
+            {
+                "id": 40,
+                "type": "MidiBindingToControlChange",
+                "members": {
+                    "ChannelNumber": 1,
+                    "ControlChangeNumber": 24,
+                    "Type": "Absolute",
+                    "ValueRange": 41
+                }
+            },
+            {
+                "id": 41,
+                "type": "MidiBindingValueRange7Bit",
+                "members": {
+                    "Min": 0,
+                    "Max": 127
+                }
+            },
+            {
+                "id": 42,
+                "type": "TriggerPad",
+                "members": {
+                    "Rect": {
+                        "X": 10.0,
+                        "Y": 2.0,
+                        "W": 2.0,
+                        "H": 2.0
+                    },
+                    "SurfaceValue": 43
+                }
+            },
+            {
+                "id": 43,
+                "type": "SurfaceElementValue",
+                "members": {
+                    "MidiBinding": 44,
+                    "TouchState": 45
+                }
+            },
+            {
+                "id": 44,
+                "type": "SurfaceValueMidiBinding",
+                "members": {
+                    "InputPort": 5,
+                    "OutputPort": 6,
+                    "IsConsuming": true,
+                    "MidiChannelBinding": 46
+                }
+            },
+            {
+                "id": 45,
+                "type": "SurfaceValueTouchState"
+            },
+            {
+                "id": 46,
+                "type": "MidiBindingToControlChange",
+                "members": {
+                    "ChannelNumber": 1,
+                    "ControlChangeNumber": 25,
+                    "Type": "Absolute",
+                    "ValueRange": 47
+                }
+            },
+            {
+                "id": 47,
+                "type": "MidiBindingValueRange7Bit",
+                "members": {
+                    "Min": 0,
+                    "Max": 127
+                }
+            },
+            {
+                "id": 48,
+                "type": "DeviceDetectionUnit",
+                "members": {
+                    "Entries": [
+                        49
+                    ]
+                }
+            },
+            {
+                "id": 49,
+                "type": "DetectionPortPair",
+                "members": {
+                    "InputPort": 5,
+                    "OutputPort": 6,
+                    "InputNameFilters": [
+                        50
+                    ],
+                    "OutputNameFilters": [
+                        51
+                    ]
+                }
+            },
+            {
+                "id": 50,
+                "type": "DetectionInputNameFilterEquals",
+                "members": {
+                    "FilterValue": "GenericToCubase"
+                }
+            },
+            {
+                "id": 51,
+                "type": "DetectionOutputNameFilterEquals",
+                "members": {
+                    "FilterValue": "CubaseToGeneric"
+                }
+            },
+            {
+                "id": 52,
+                "type": "Fader",
+                "members": {
+                    "Rect": {
+                        "X": 15.0,
+                        "Y": 2.0,
+                        "W": 2.0,
+                        "H": 2.0
+                    },
+                    "SurfaceValue": 53,
+                    "Type": "Vertical"
+                }
+            },
+            {
+                "id": 53,
+                "type": "SurfaceElementValue",
+                "members": {
+                    "MidiBinding": 54,
+                    "TouchState": 55
+                }
+            },
+            {
+                "id": 54,
+                "type": "SurfaceValueMidiBinding",
+                "members": {
+                    "InputPort": 5,
+                    "OutputPort": 6,
+                    "IsConsuming": true,
+                    "MidiChannelBinding": 56
+                }
+            },
+            {
+                "id": 55,
+                "type": "SurfaceValueTouchState"
+            },
+            {
+                "id": 56,
+                "type": "MidiBindingToControlChange",
+                "members": {
+                    "ChannelNumber": 1,
+                    "ControlChangeNumber": 27,
+                    "Type": "Absolute",
+                    "ValueRange": 57
+                }
+            },
+            {
+                "id": 57,
+                "type": "MidiBindingValueRange7Bit",
+                "members": {
+                    "Min": 0,
+                    "Max": 127
+                }
+            },
+            {
+                "id": 58,
+                "type": "Lamp",
+                "members": {
+                    "Rect": {
+                        "X": 14.0,
+                        "Y": 2.0,
+                        "W": 1.0,
+                        "H": 1.0
+                    },
+                    "SurfaceValue": 59,
+                    "Shape": "Rectangle"
+                }
+            },
+            {
+                "id": 59,
+                "type": "SurfaceElementValue",
+                "members": {
+                    "MidiBinding": 60,
+                    "TouchState": 61
+                }
+            },
+            {
+                "id": 60,
+                "type": "SurfaceValueMidiBinding",
+                "members": {
+                    "InputPort": 5,
+                    "OutputPort": 6,
+                    "IsConsuming": true,
+                    "MidiChannelBinding": 62
+                }
+            },
+            {
+                "id": 61,
+                "type": "SurfaceValueTouchState"
+            },
+            {
+                "id": 62,
+                "type": "MidiBindingToControlChange",
+                "members": {
+                    "ChannelNumber": 1,
+                    "ControlChangeNumber": 28,
+                    "Type": "Absolute",
+                    "ValueRange": 63
+                }
+            },
+            {
+                "id": 63,
+                "type": "MidiBindingValueRange7Bit",
+                "members": {
+                    "Min": 0,
+                    "Max": 127
+                }
+            },
+            {
+                "id": 64,
+                "type": "TriggerPad",
+                "members": {
+                    "Rect": {
+                        "X": 12.0,
+                        "Y": 2.0,
+                        "W": 2.0,
+                        "H": 2.0
+                    },
+                    "SurfaceValue": 65
+                }
+            },
+            {
+                "id": 65,
+                "type": "SurfaceElementValue",
+                "members": {
+                    "MidiBinding": 66,
+                    "TouchState": 67
+                }
+            },
+            {
+                "id": 66,
+                "type": "SurfaceValueMidiBinding",
+                "members": {
+                    "InputPort": 5,
+                    "OutputPort": 6,
+                    "IsConsuming": true,
+                    "MidiChannelBinding": 68
+                }
+            },
+            {
+                "id": 67,
+                "type": "SurfaceValueTouchState"
+            },
+            {
+                "id": 68,
+                "type": "MidiBindingToControlChange",
+                "members": {
+                    "ChannelNumber": 1,
+                    "ControlChangeNumber": 26,
+                    "Type": "Absolute",
+                    "ValueRange": 69
+                }
+            },
+            {
+                "id": 69,
+                "type": "MidiBindingValueRange7Bit",
+                "members": {
+                    "Min": 0,
+                    "Max": 127
+                }
+            },
+            {
+                "id": 70,
+                "type": "TriggerPad",
+                "members": {
+                    "Rect": {
+                        "X": 0.0,
+                        "Y": 0.0,
+                        "W": 2.0,
+                        "H": 2.0
+                    },
+                    "SurfaceValue": 71
+                }
+            },
+            {
+                "id": 71,
+                "type": "SurfaceElementValue",
+                "members": {
+                    "MidiBinding": 72,
+                    "TouchState": 73
+                }
+            },
+            {
+                "id": 72,
+                "type": "SurfaceValueMidiBinding",
+                "members": {
+                    "InputPort": 5,
+                    "OutputPort": 6,
+                    "IsConsuming": true,
+                    "MidiChannelBinding": 74
+                }
+            },
+            {
+                "id": 73,
+                "type": "SurfaceValueTouchState"
+            },
+            {
+                "id": 74,
+                "type": "MidiBindingToControlChange",
+                "members": {
+                    "ChannelNumber": 1,
+                    "ControlChangeNumber": 29,
+                    "Type": "Absolute",
+                    "ValueRange": 75
+                }
+            },
+            {
+                "id": 75,
+                "type": "MidiBindingValueRange7Bit",
+                "members": {
+                    "Min": 0,
+                    "Max": 127
+                }
+            },
+            {
+                "id": 76,
+                "type": "TriggerPad",
+                "members": {
+                    "Rect": {
+                        "X": 2.0,
+                        "Y": 0.0,
+                        "W": 2.0,
+                        "H": 2.0
+                    },
+                    "SurfaceValue": 77
+                }
+            },
+            {
+                "id": 77,
+                "type": "SurfaceElementValue",
+                "members": {
+                    "MidiBinding": 78,
+                    "TouchState": 79
+                }
+            },
+            {
+                "id": 78,
+                "type": "SurfaceValueMidiBinding",
+                "members": {
+                    "InputPort": 5,
+                    "OutputPort": 6,
+                    "IsConsuming": true,
+                    "MidiChannelBinding": 80
+                }
+            },
+            {
+                "id": 79,
+                "type": "SurfaceValueTouchState"
+            },
+            {
+                "id": 80,
+                "type": "MidiBindingToControlChange",
+                "members": {
+                    "ChannelNumber": 1,
+                    "ControlChangeNumber": 30,
+                    "Type": "Absolute",
+                    "ValueRange": 81
+                }
+            },
+            {
+                "id": 81,
+                "type": "MidiBindingValueRange7Bit",
+                "members": {
+                    "Min": 0,
+                    "Max": 127
+                }
+            },
+            {
+                "id": 82,
+                "type": "ExcludeInputChannelType"
+            },
+            {
+                "id": 83,
+                "type": "ExcludeOutputChannelType"
+            },
+            {
+                "id": 84,
+                "type": "IncludeOutputChannelType"
+            },
+            {
+                "id": 85,
+                "type": "HostInsertEffectViewerActions"
+            },
+            {
+                "id": 86,
+                "type": "HostInsertEffectFilterExcludeEmptySlots"
+            },
+            {
+                "id": 87,
+                "type": "HostInsertEffectFilterFollowPluginWindowInFocus"
+            }
+        ],
+        "external": [
+            {
+                "id": 88,
+                "type": "DomainModel",
+                "members": {
+                    "DeviceDrivers": [
+                        1
+                    ]
+                }
+            }
+        ]
+    }
+}
