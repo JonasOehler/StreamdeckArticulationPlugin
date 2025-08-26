@@ -107,5 +107,3 @@ trackMeta.mOnColorChange = function (activeDevice, r, g, b /*, a, isActive */) {
       b7
   );
 };
-
-module.exports = deviceDriver;
