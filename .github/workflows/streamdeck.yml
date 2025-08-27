@@ -1,117 +1,119 @@
-name: Build & Package Stream Deck Plugin
+name: Build & Release
 
 on:
   push:
-    branches: [ main, master ]
-    tags: [ "v*", "release-*" ]
-  pull_request:
-  workflow_dispatch:
-
-env:
-  PLUGIN_DIR: com.jonasoehler.cubase.articulation.sdPlugin
-  WIN_DIST_SUBDIR: dist/win
-  MAC_DIST_SUBDIR: dist/mac
+    tags:
+      - "v*" # Release läuft bei Tag wie v1.1.0
+  workflow_dispatch: # manueller Start möglich
 
 jobs:
-  windows:
-    name: Windows build & pack
+  build_windows:
+    name: Windows – build & pack
     runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: com.jonasoehler.cubase.articulation.sdPlugin
 
-      - name: Setup Node.js
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node 20
         uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: npm
-          cache-dependency-path: ${{ env.PLUGIN_DIR }}/package-lock.json
+          node-version: "20"
 
       - name: Install Stream Deck CLI
         run: npm i -g @elgato/cli@latest
 
-      - name: Verify CLI
-        run: streamdeck -v
-
-      - name: Build (bundle + stage)
-        shell: pwsh
-        working-directory: ${{ env.PLUGIN_DIR }}
+      - name: Build (esbuild) + package folder
         run: |
-          powershell -ExecutionPolicy Bypass -File .\scripts\build-win.ps1
+          powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-win.ps1
 
-      # VALIDATE: im gestagten Plugin-Ordner validieren
-      - name: Validate plugin (CLI)
-        shell: pwsh
-        working-directory: ${{ env.PLUGIN_DIR }}\${{ env.WIN_DIST_SUBDIR }}
+      - name: Pack .streamDeckPlugin (Stream Deck CLI)
         run: |
-          streamdeck validate ${{ env.PLUGIN_DIR }}
+          # packt ins ./dist (CLI erkennt manifest automatisch im CWD)
+          streamdeck pack --output dist
 
-      # PACK: aus dist/win das gestagte Verzeichnis packen
-      - name: Pack plugin (CLI)
-        shell: pwsh
-        working-directory: ${{ env.PLUGIN_DIR }}\${{ env.WIN_DIST_SUBDIR }}
+      - name: Make RemoteInstaller-win.zip
         run: |
-          streamdeck pack ${{ env.PLUGIN_DIR }} --output ../.. --force
+          $zip = Join-Path "dist" "RemoteInstaller-win.zip"
+          if (Test-Path $zip) { Remove-Item -Force $zip }
+          $files = @(
+            "remote/Elgato_StreamDeckXL.js",
+            "scripts/install-remote-api.ps1",
+            "scripts/install-remote-api.cmd"
+          )
+          Compress-Archive -Path $files -DestinationPath $zip
 
-      - name: Upload artifact (.streamDeckPlugin)
+      - name: Upload artifact – plugin
         uses: actions/upload-artifact@v4
         with:
           name: plugin-windows
-          path: ${{ env.PLUGIN_DIR }}\dist\*.streamDeckPlugin
+          path: com.jonasoehler.cubase.articulation.sdPlugin/dist/*.streamDeckPlugin
+          if-no-files-found: error
 
-  macos:
-    name: macOS build & pack
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-          cache-dependency-path: ${{ env.PLUGIN_DIR }}/package-lock.json
-
-      - name: Install Stream Deck CLI
-        run: npm i -g @elgato/cli@latest
-
-      - name: Verify CLI
-        run: streamdeck -v
-
-      - name: Build (bundle + stage)
-        working-directory: ${{ env.PLUGIN_DIR }}
-        run: |
-          chmod +x ./scripts/build-mac.sh
-          ./scripts/build-mac.sh
-
-      - name: Validate plugin (CLI)
-        working-directory: ${{ env.PLUGIN_DIR }}/${{ env.MAC_DIST_SUBDIR }}
-        run: |
-          streamdeck validate ${{ env.PLUGIN_DIR }}
-
-      - name: Pack plugin (CLI)
-        working-directory: ${{ env.PLUGIN_DIR }}/${{ env.MAC_DIST_SUBDIR }}
-        run: |
-          streamdeck pack ${{ env.PLUGIN_DIR }} --output ../.. --force
-
-      - name: Upload artifact (.streamDeckPlugin)
+      - name: Upload artifact – RemoteInstaller-win.zip
         uses: actions/upload-artifact@v4
         with:
-          name: plugin-macos
-          path: ${{ env.PLUGIN_DIR }}/dist/*.streamDeckPlugin
+          name: remote-installer-win
+          path: com.jonasoehler.cubase.articulation.sdPlugin/dist/RemoteInstaller-win.zip
+          if-no-files-found: error
 
-  # Optional: GitHub Release bei Tags
-  release:
-    if: startsWith(github.ref, 'refs/tags/')
-    needs: [windows, macos]
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
+  build_mac_remote:
+    name: macOS – pack RemoteInstaller (exec bits)
+    runs-on: macos-latest
+    defaults:
+      run:
+        shell: bash
+        working-directory: com.jonasoehler.cubase.articulation.sdPlugin
+
     steps:
-      - uses: actions/download-artifact@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare exec bits
+        run: |
+          chmod +x scripts/install-remote-api.sh
+          chmod +x "scripts/Install Remote API.command"
+
+      - name: Make RemoteInstaller-mac.zip
+        run: |
+          mkdir -p dist
+          cd scripts
+          zip -r ../dist/RemoteInstaller-mac.zip \
+            "../remote/Elgato_StreamDeckXL.js" \
+            "install-remote-api.sh" \
+            "Install Remote API.command"
+
+      - name: Upload artifact – RemoteInstaller-mac.zip
+        uses: actions/upload-artifact@v4
         with:
-          path: dist
-      - uses: softprops/action-gh-release@v2
+          name: remote-installer-mac
+          path: com.jonasoehler.cubase.articulation.sdPlugin/dist/RemoteInstaller-mac.zip
+          if-no-files-found: error
+
+  release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: [build_windows, build_mac_remote]
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist-collect
+
+      - name: List collected artifacts
+        run: ls -R dist-collect
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
         with:
           files: |
-            dist/plugin-windows/*.streamDeckPlugin
-            dist/plugin-macos/*.streamDeckPlugin
+            dist-collect/plugin-windows/*.streamDeckPlugin
+            dist-collect/remote-installer-win/RemoteInstaller-win.zip
+            dist-collect/remote-installer-mac/RemoteInstaller-mac.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
