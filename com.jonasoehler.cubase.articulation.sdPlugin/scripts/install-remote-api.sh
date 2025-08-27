@@ -17,11 +17,13 @@ DOCS="$HOME/Documents"
 STEINBERG="$DOCS/Steinberg"
 
 # Mehr Varianten abdecken; in *alle* gefundenen installieren
-CANDIDATES=("Cubase 13" "Cubase Pro 13" "Cubase Artist 13"
-            "Cubase 12" "Cubase Pro 12" "Cubase Artist 12"
-            "Cubase 11" "Cubase Pro 11" "Cubase Artist 11"
-            "Cubase"
-            "Nuendo 13" "Nuendo 12" "Nuendo")
+CANDIDATES=(
+  "Cubase 13" "Cubase Pro 13" "Cubase Artist 13" "Cubase Elements 13"
+  "Cubase 12" "Cubase Pro 12" "Cubase Artist 12" "Cubase Elements 12"
+  "Cubase 11" "Cubase Pro 11" "Cubase Artist 11" "Cubase Elements 11"
+  "Cubase"
+  "Nuendo 13" "Nuendo 12" "Nuendo"
+)
 
 BASES=()
 for d in "${CANDIDATES[@]}"; do
@@ -44,5 +46,6 @@ done
 if [[ ${#INSTALLED[@]} -gt 0 ]]; then
   open "${INSTALLED[0]}" >/dev/null 2>&1 || true
 else
-  echo "No targets were created. Please verify your Documents/Steinberg structure." >&2
+  echo "No targets were created. Please verify your ~/Documents/Steinberg structure." >&2
+  exit 2
 fi

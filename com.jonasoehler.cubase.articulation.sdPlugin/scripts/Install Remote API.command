@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+set -euo pipefail
 DIR="$(cd "$(dirname "$0")" && pwd)"
-bash "$DIR/install-remote-api.sh"
-read -n 1 -s -r -p "Done. Press any key to close…"
+/bin/bash "$DIR/install-remote-api.sh"
+printf "\nDone. You can close this window.\n"
+read -r -p "Press Enter to exit…"

@@ -4,6 +4,7 @@ set -euo pipefail
 PLUGIN_FOLDER_NAME="com.jonasoehler.cubase.articulation.sdPlugin"
 DIST_ROOT="dist/mac"
 
+# ROOT = repo root (eine Ebene über scripts/)
 ROOT="$(cd "$(dirname "$0")"/.. && pwd)"
 
 # SRC bestimmen (bereits im Plugin-Ordner oder eine Ebene drüber)
@@ -36,16 +37,15 @@ npm i
 node bundle.mjs
 popd >/dev/null
 
-# Dateien kopieren
+# Dateien kopieren (OHNE remote/ – Installer liefern wir separat als Release-Asset)
 echo "[build] copy files"
+cp "$SRC/manifest.json" "$PKGDIR/manifest.json"
 cp "$SRC/plugin.cjs" "$PKGDIR"
 [[ -f "$SRC/profiles.json" ]] && cp "$SRC/profiles.json" "$PKGDIR"
 [[ -d "$SRC/assets" ]] && cp -R "$SRC/assets" "$PKGDIR"
 [[ -d "$SRC/propertyinspector" ]] && cp -R "$SRC/propertyinspector" "$PKGDIR"
-[[ -d "$SRC/remote" ]] && cp -R "$SRC/remote" "$PKGDIR"
 
-# Manifest anpassen: CodePath -> plugin.cjs
-cp "$SRC/manifest.json" "$PKGDIR/manifest.json"
+# Manifest sicherstellen: CodePath -> plugin.cjs
 node -e 'const fs=require("fs"); const p=process.argv[1]; const m=JSON.parse(fs.readFileSync(p,"utf8")); m.CodePath="plugin.cjs"; fs.writeFileSync(p, JSON.stringify(m,null,2));' "$PKGDIR/manifest.json"
 
 # Production-Deps im Ziel (native Addons)
@@ -67,13 +67,14 @@ fi
 
 # Packen via CLI (Fallback: zip -> .streamDeckPlugin)
 echo "[pack] using Stream Deck CLI into $DESTROOT"
+_cli_fail=0
 if command -v streamdeck >/dev/null 2>&1; then
   streamdeck package --source "$OUTDIR" --output "$DESTROOT" || _cli_fail=1
 else
   _cli_fail=1
 fi
 
-if [[ "${_cli_fail:-0}" -ne 0 ]]; then
+if [[ "${_cli_fail}" -ne 0 ]]; then
   echo "[pack] CLI not available or failed. Fallback zip -> .streamDeckPlugin"
   ZIP="$DESTROOT/com.jonasoehler.cubase.articulation-mac.zip"
   PKG="$DESTROOT/com.jonasoehler.cubase.articulation-mac.streamDeckPlugin"
