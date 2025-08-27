@@ -1,0 +1,117 @@
+name: Build & Package Stream Deck Plugin
+
+on:
+  push:
+    branches: [ main, master ]
+    tags: [ "v*", "release-*" ]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  PLUGIN_DIR: com.jonasoehler.cubase.articulation.sdPlugin
+  WIN_DIST_SUBDIR: dist/win
+  MAC_DIST_SUBDIR: dist/mac
+
+jobs:
+  windows:
+    name: Windows build & pack
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: ${{ env.PLUGIN_DIR }}/package-lock.json
+
+      - name: Install Stream Deck CLI
+        run: npm i -g @elgato/cli@latest
+
+      - name: Verify CLI
+        run: streamdeck -v
+
+      - name: Build (bundle + stage)
+        shell: pwsh
+        working-directory: ${{ env.PLUGIN_DIR }}
+        run: |
+          powershell -ExecutionPolicy Bypass -File .\scripts\build-win.ps1
+
+      # VALIDATE: im gestagten Plugin-Ordner validieren
+      - name: Validate plugin (CLI)
+        shell: pwsh
+        working-directory: ${{ env.PLUGIN_DIR }}\${{ env.WIN_DIST_SUBDIR }}
+        run: |
+          streamdeck validate ${{ env.PLUGIN_DIR }}
+
+      # PACK: aus dist/win das gestagte Verzeichnis packen
+      - name: Pack plugin (CLI)
+        shell: pwsh
+        working-directory: ${{ env.PLUGIN_DIR }}\${{ env.WIN_DIST_SUBDIR }}
+        run: |
+          streamdeck pack ${{ env.PLUGIN_DIR }} --output ../.. --force
+
+      - name: Upload artifact (.streamDeckPlugin)
+        uses: actions/upload-artifact@v4
+        with:
+          name: plugin-windows
+          path: ${{ env.PLUGIN_DIR }}\dist\*.streamDeckPlugin
+
+  macos:
+    name: macOS build & pack
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: ${{ env.PLUGIN_DIR }}/package-lock.json
+
+      - name: Install Stream Deck CLI
+        run: npm i -g @elgato/cli@latest
+
+      - name: Verify CLI
+        run: streamdeck -v
+
+      - name: Build (bundle + stage)
+        working-directory: ${{ env.PLUGIN_DIR }}
+        run: |
+          chmod +x ./scripts/build-mac.sh
+          ./scripts/build-mac.sh
+
+      - name: Validate plugin (CLI)
+        working-directory: ${{ env.PLUGIN_DIR }}/${{ env.MAC_DIST_SUBDIR }}
+        run: |
+          streamdeck validate ${{ env.PLUGIN_DIR }}
+
+      - name: Pack plugin (CLI)
+        working-directory: ${{ env.PLUGIN_DIR }}/${{ env.MAC_DIST_SUBDIR }}
+        run: |
+          streamdeck pack ${{ env.PLUGIN_DIR }} --output ../.. --force
+
+      - name: Upload artifact (.streamDeckPlugin)
+        uses: actions/upload-artifact@v4
+        with:
+          name: plugin-macos
+          path: ${{ env.PLUGIN_DIR }}/dist/*.streamDeckPlugin
+
+  # Optional: GitHub Release bei Tags
+  release:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: [windows, macos]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/plugin-windows/*.streamDeckPlugin
+            dist/plugin-macos/*.streamDeckPlugin
