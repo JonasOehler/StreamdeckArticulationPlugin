@@ -1,19 +1,12 @@
 /* eslint-disable no-console */
 "use strict";
 
-/**
- * Cubase Articulations – robuste Version
- * - Native Module (@napi-rs/canvas, easymidi) OPTIONAL & LAZY
- * - Fallbacks: Rendering via setTitle, Betrieb ohne MIDI
- * - Frühes Logging vor externen require()s
- */
-
 const fs = require("fs");
 const path = require("path");
 
-/* -------------------------
-   Mini-Logger: ganz früh!
--------------------------- */
+// ---------------------------------------
+// Logging (Konsole + Datei)
+// ---------------------------------------
 const LOG_PATH = path.join(__dirname, "plugin.log");
 function ts() {
   const d = new Date();
@@ -33,57 +26,73 @@ function w(line) {
     console.log(line);
   } catch (_) {}
 }
-function fatal(msg, err) {
-  w(`[FATAL] ${msg}: ${err && (err.stack || err.message || err)}`);
-  process.exit(1);
-}
-w("==== Cubase Articulations Plugin START (safe requires) ====");
+w("==== Cubase Articulations Plugin START ====");
 
-/* -------------------------
-   Externe Module sicher laden
--------------------------- */
-let WebSocket;
-try {
-  WebSocket = require("ws");
-  w("[DBG] ws module geladen");
-} catch (e) {
-  fatal("ws module konnte nicht geladen werden", e);
-}
-
-let easymidi = null;
-try {
-  easymidi = require("easymidi");
-  w("[DBG] easymidi geladen");
-} catch (e) {
-  w(`[WRN] easymidi NICHT verfügbar: ${e && e.message}`);
+// ---------------------------------------
+// Cubase Remote Script Auto-Install (once)
+// ---------------------------------------
+function getDocumentsDir() {
+  const home = process.env.HOME || process.env.USERPROFILE || null;
+  // Windows: OneDrive "Documents" bevorzugen
+  if (process.platform === "win32") {
+    const od = process.env.OneDrive || process.env.ONEDRIVE;
+    if (od) {
+      const cand = path.join(od, "Documents");
+      if (fs.existsSync(cand)) return cand;
+    }
+  }
+  return home ? path.join(home, "Documents") : null;
 }
 
-let createCanvas = null;
-let GlobalFonts = { has: () => false, registerFromPath: () => {} };
-try {
-  ({ createCanvas, GlobalFonts } = require("@napi-rs/canvas"));
-  w("[DBG] @napi-rs/canvas geladen");
-} catch (e) {
-  w(
-    `[WRN] @napi-rs/canvas NICHT verfügbar – Fallback auf setTitle: ${
-      e && e.message
-    }`
-  );
+function installCubaseRemoteScriptOnce() {
+  try {
+    const docs = getDocumentsDir();
+    if (!docs) return;
+
+    const src = path.join(__dirname, "remote", "Elgato_StreamDeckXL.js");
+    if (!fs.existsSync(src)) {
+      w("[INFO] Remote script source not found: " + src);
+      return;
+    }
+
+    const APPS = ["Cubase"]; // bei Bedarf: "Nuendo" ergänzen
+    for (const app of APPS) {
+      const dstDir = path.join(
+        docs,
+        "Steinberg",
+        app,
+        "MIDI Remote",
+        "Driver Scripts",
+        "Local",
+        "Elgato",
+        "StreamDeckXL"
+      );
+      const dst = path.join(dstDir, "Elgato_StreamDeckXL.js");
+
+      if (!fs.existsSync(dst)) {
+        fs.mkdirSync(dstDir, { recursive: true });
+        fs.copyFileSync(src, dst);
+        w(`[INFO] Installed Cubase Remote Script: ${dst}`);
+      } else {
+        w(`[INFO] Cubase Remote Script already present: ${dst}`);
+      }
+    }
+  } catch (e) {
+    w(`[WRN] Could not install Remote Script: ${e && e.message}`);
+  }
 }
+installCubaseRemoteScriptOnce();
 
-/* -------------------------
-   Schutznetze für Laufzeit
--------------------------- */
-process.on("uncaughtException", (err) => {
-  w(`[UNCAUGHT] ${err && (err.stack || err)}`);
-});
-process.on("unhandledRejection", (reason) => {
-  w(`[UNHANDLED REJECTION] ${reason && (reason.stack || reason)}`);
-});
+// ---------------------------------------
+// Requires (WS, MIDI, Canvas)
+// ---------------------------------------
+const WebSocket = require("ws");
+const easymidi = require("easymidi");
+const { createCanvas, GlobalFonts } = require("@napi-rs/canvas");
 
-/* ---------------------------------------
-   Fonts (optional)
----------------------------------------- */
+// ---------------------------------------
+// Fonts (optional)
+// ---------------------------------------
 try {
   const fontSemiBold = path.join(
     __dirname,
@@ -97,40 +106,21 @@ try {
     "fonts",
     "Inter-Medium.ttf"
   );
-  if (
-    fs.existsSync(fontSemiBold) &&
-    GlobalFonts &&
-    GlobalFonts.registerFromPath
-  ) {
+  if (fs.existsSync(fontSemiBold)) {
     GlobalFonts.registerFromPath(fontSemiBold, "Inter-SemiBold");
-    w(`[DBG] Font registriert: ${fontSemiBold}`);
+    w(`[DBG] Font registered: ${fontSemiBold}`);
   }
-  if (
-    fs.existsSync(fontMedium) &&
-    GlobalFonts &&
-    GlobalFonts.registerFromPath
-  ) {
+  if (fs.existsSync(fontMedium)) {
     GlobalFonts.registerFromPath(fontMedium, "Inter-Medium");
-    w(`[DBG] Font registriert: ${fontMedium}`);
+    w(`[DBG] Font registered: ${fontMedium}`);
   }
 } catch (e) {
-  w(`[WRN] Konnte Fonts nicht registrieren: ${e && e.message}`);
+  w(`[WRN] Could not register fonts: ${e && e.message}`);
 }
 
-/* ---------------------------------------
-   Utils
----------------------------------------- */
-function safeJson(x) {
-  try {
-    return typeof x === "string" ? JSON.parse(x) : JSON.parse(String(x));
-  } catch {
-    return null;
-  }
-}
-
-/* ---------------------------------------
-   SDK Start-Parameter
----------------------------------------- */
+// ---------------------------------------
+// SDK Start-Parameter
+// ---------------------------------------
 const args = process.argv.slice(2);
 const getArg = (f) => {
   const i = args.indexOf(f);
@@ -148,28 +138,26 @@ w(
     infoVersion: info.application?.version || "",
   })}`
 );
+
 if (!port || !pluginUUID || !registerEvent) {
-  w("[ERR] Fehlende Startparameter (-port/-pluginUUID/-registerEvent).");
+  w("[ERR] Missing start parameters (-port/-pluginUUID/-registerEvent).");
   process.exit(1);
 }
 
-/* ---------------------------------------
-   MIDI I/O (optional)
----------------------------------------- */
+// ---------------------------------------
+// MIDI I/O
+// ---------------------------------------
 const TARGET_MIDI_OUT = "NodeToCubase";
 const TARGET_MIDI_IN = "CubaseToNode";
 
+// CC mapping & channel for color
 const COLOR_CC = { R: 20, G: 21, B: 22 };
-const COLOR_CH = 14; // 0..15 => Kanal 15
+const COLOR_CH = 14; // 0..15 => channel 15
 
 let midiOut = null,
   midiIn = null;
 
 function setupMidi() {
-  if (!easymidi) {
-    w("[WRN] MIDI deaktiviert (easymidi nicht geladen)");
-    return;
-  }
   try {
     const outs = easymidi.getOutputs();
     const ins = easymidi.getInputs();
@@ -181,20 +169,18 @@ function setupMidi() {
 
     if (!outName)
       w(
-        `[WRN] Kein MIDI Out "${TARGET_MIDI_OUT}". Verfügbar: ${outs.join(
-          ", "
-        )}`
+        `[WRN] No MIDI Out "${TARGET_MIDI_OUT}". Available: ${outs.join(", ")}`
       );
     if (!inName)
-      w(`[WRN] Kein MIDI In "${TARGET_MIDI_IN}". Verfügbar: ${ins.join(", ")}`);
+      w(`[WRN] No MIDI In  "${TARGET_MIDI_IN}". Available: ${ins.join(", ")}`);
 
     if (outName) {
       midiOut = new easymidi.Output(outName);
-      w(`MIDI Out verbunden: ${outName}`);
+      w(`MIDI Out connected: ${outName}`);
     }
     if (inName) {
       midiIn = new easymidi.Input(inName);
-      w(`MIDI In  verbunden: ${inName}`);
+      w(`MIDI In  connected: ${inName}`);
     }
 
     if (midiIn) {
@@ -212,24 +198,19 @@ function setupMidi() {
           msg.controller === COLOR_CC.B;
         if (!isColorCC) return;
         if (msg.channel !== COLOR_CH) {
-          w(
-            `[DBG] [MIDI<-Cubase] Ignoriert (falscher Kanal, erwartet ${
-              COLOR_CH + 1
-            })`
-          );
+          w(`[DBG] [MIDI<-Cubase] Ignored (expected channel ${COLOR_CH + 1})`);
           return;
         }
         onCcFromCubase(msg);
       });
     }
   } catch (e) {
-    w(`[ERR] MIDI Setup Fehler: ${e && e.message}`);
+    w(`[ERR] MIDI setup error: ${e && e.message}`);
   }
 }
 
 function sendNote(noteNumber, channel = 0, velocity = 127, lengthMs = 110) {
-  if (!midiOut) return w("[ERR] Kein MIDI Out aktiv oder MIDI deaktiviert.");
-  w(`[DBG] sendNote ${noteNumber} ch=${channel} vel=${velocity}`);
+  if (!midiOut) return w("[ERR] No MIDI Out active.");
   midiOut.send("noteon", { note: noteNumber, velocity, channel });
   setTimeout(
     () => midiOut.send("noteoff", { note: noteNumber, velocity: 0, channel }),
@@ -237,22 +218,22 @@ function sendNote(noteNumber, channel = 0, velocity = 127, lengthMs = 110) {
   );
 }
 
-/* ---------------------------------------
-   Profiles laden
----------------------------------------- */
+// ---------------------------------------
+// Profiles laden
+// ---------------------------------------
 const profilesPath = path.join(__dirname, "profiles.json");
 let profiles = {};
 try {
   profiles = JSON.parse(fs.readFileSync(profilesPath, "utf-8"));
-  w(`Profiles geladen: ${profilesPath}`);
+  w(`Profiles loaded: ${profilesPath}`);
 } catch {
-  w("[WRN] profiles.json nicht gefunden/lesbar – verwende leeres Mapping.");
+  w("[WRN] profiles.json missing/unreadable – using empty mapping.");
   profiles = {};
 }
 
-/* ---------------------------------------
-   State je Gerät
----------------------------------------- */
+// ---------------------------------------
+// State je Gerät
+// ---------------------------------------
 const deviceState = new Map();
 /**
  * deviceState: Map<deviceId, {
@@ -264,20 +245,19 @@ const deviceState = new Map();
  *   instrumentTitle: string
  * }>
  */
-
 const COLS = 8; // Stream Deck XL
-const TITLE_POS = { col: 1, row: 0 }; // Titel-Key (Zeile 1, Taste 2)
-const START_ROW_FOR_ARTS = 1; // Artikulationen ab Zeile 2
+const TITLE_POS = { col: 1, row: 0 };
+const START_ROW_FOR_ARTS = 1;
 
-/* ---------------------------------------
-   WebSocket zur Stream Deck App
----------------------------------------- */
+// ---------------------------------------
+// WebSocket zur Stream Deck App
+// ---------------------------------------
 const ws = new WebSocket(`ws://127.0.0.1:${port}`);
 
 ws.on("open", () => {
   ws.send(JSON.stringify({ event: registerEvent, uuid: pluginUUID }));
   w(
-    `Stream Deck verbunden & registriert. ${JSON.stringify({
+    `Stream Deck connected & registered. ${JSON.stringify({
       port,
       pluginUUID,
     })}`
@@ -296,7 +276,7 @@ function handleMessage(msg) {
 
   if (event === "deviceDidConnect") {
     ensureDeviceState(msg.device);
-    w(`Device verbunden: ${msg.device}`);
+    w(`Device connected: ${msg.device}`);
   }
   if (event === "deviceDidDisconnect") deviceState.delete(msg.device);
 
@@ -318,9 +298,9 @@ function handleMessage(msg) {
   if (event === "keyUp") onKeyUp(msg);
 }
 
-/* ---------------------------------------
-   Mapping Helpers
----------------------------------------- */
+// ---------------------------------------
+// Mapping Helpers
+// ---------------------------------------
 function ensureDeviceState(deviceId) {
   if (!deviceState.has(deviceId)) {
     deviceState.set(deviceId, {
@@ -335,16 +315,13 @@ function ensureDeviceState(deviceId) {
   }
   return deviceState.get(deviceId);
 }
-
 function coordKey(c) {
   return `${c.column},${c.row}`;
 }
-
 function articulationIndexForCoord(c) {
   if (c.row < START_ROW_FOR_ARTS) return null;
   return (c.row - START_ROW_FOR_ARTS) * COLS + c.column;
 }
-
 function hasArt(art) {
   return !!(
     art &&
@@ -373,8 +350,6 @@ function initialRenderForKey(deviceId, coord, context) {
 function onKeyDown(msg) {
   const st = ensureDeviceState(msg.device);
   const c = msg.payload.coordinates;
-
-  // Titel-Key ignorieren
   if (c.row === TITLE_POS.row && c.column === TITLE_POS.col) return;
 
   const artIdx = articulationIndexForCoord(c);
@@ -408,14 +383,11 @@ function onKeyDown(msg) {
     Promise.allSettled(jobs);
   }
 }
+function onKeyUp(/* msg */) {}
 
-function onKeyUp(/* msg */) {
-  // nichts nötig
-}
-
-/* ---------------------------------------
-   Cubase: Trackname (SysEx) & Farbe (CC 20/21/22 auf Kanal 15)
----------------------------------------- */
+// ---------------------------------------
+// Cubase: Trackname (SysEx) & Farbe (CC 20/21/22 auf Kanal 15)
+// ---------------------------------------
 let lastTrackName = "";
 let debounceTimer = null;
 
@@ -433,7 +405,7 @@ function onSysexFromCubase(bytes) {
 
 // Farbe via CC#20 (R), #21 (G), #22 (B) [0..127] – nur auf Kanal 15
 const colorState = { r: null, g: null, b: null, timer: null };
-function onCcFromCubase({ controller, value /*, channel */ }) {
+function onCcFromCubase({ controller, value, channel }) {
   if (controller === COLOR_CC.R) colorState.r = value;
   else if (controller === COLOR_CC.G) colorState.g = value;
   else if (controller === COLOR_CC.B) colorState.b = value;
@@ -446,7 +418,7 @@ function onCcFromCubase({ controller, value /*, channel */ }) {
       b = to255(colorState.b);
     if ([r, g, b].some((x) => x == null)) return;
     const hex = rgbToHex(r, g, b);
-    w(`[COLOR] Spurfarbe gesetzt: ${hex} (R${r} G${g} B${b})`);
+    w(`[COLOR] Track color set: ${hex} (R${r} G${g} B${b})`);
 
     for (const [deviceId, st] of deviceState) {
       st.color = hex;
@@ -454,7 +426,6 @@ function onCcFromCubase({ controller, value /*, channel */ }) {
     }
   }, 25);
 }
-
 function to255(v) {
   return typeof v === "number" ? Math.round((v / 127) * 255) : null;
 }
@@ -465,21 +436,18 @@ function rgbToHex(r, g, b) {
   )}${toHex(Math.max(0, Math.min(255, b)))}`;
 }
 
-// Titel immer setzen; Arts nur wenn Trackname auf „... KS“ endet
+// Titel immer setzen; Arts nur wenn "KS" vorhanden
 function applyProfileForTrack(trackName) {
   const trimmed = String(trackName || "").trim();
   const hasKS = /\bKS\b$/i.test(trimmed);
-
   const title = extractInstrumentTitle(trimmed);
 
   let key = null;
   let arts = [];
   if (hasKS) {
-    // Robuster: Substring-Match statt Regex
     key =
-      Object.keys(profiles).find((k) =>
-        trimmed.toLowerCase().includes(k.toLowerCase())
-      ) || null;
+      Object.keys(profiles).find((k) => new RegExp(k, "i").test(trimmed)) ||
+      null;
     const profile = key ? profiles[key] || {} : {};
     arts = (profile.articulations || []).map((a) => ({
       name: a.name || "",
@@ -487,7 +455,7 @@ function applyProfileForTrack(trackName) {
     }));
   } else {
     w(
-      `⏭ Spur ohne "KS": Articulation-Keys werden geleert. Titel wird gesetzt: "${title}"`
+      `⏭ Track without "KS": clearing articulation keys; setting title "${title}"`
     );
   }
 
@@ -514,7 +482,6 @@ async function renderProfileForDevice(deviceId) {
       st.instrumentTitle || ""
     }" | color: ${st.color} | arts: ${st.articulations.length}`
   );
-
   const tasks = [];
   st.contextsByCoord.forEach((context, coordStr) => {
     const [col, row] = coordStr.split(",").map(Number);
@@ -536,9 +503,9 @@ async function renderProfileForDevice(deviceId) {
   await Promise.allSettled(tasks);
 }
 
-/* ---------------------------------------
-   Rendering (Canvas oder Fallback)
----------------------------------------- */
+// ---------------------------------------
+// Rendering
+// ---------------------------------------
 const IMG_SIZE = 96;
 const HEADER_H = 8;
 const MAIN_FONT_SIZE = 16;
@@ -546,12 +513,10 @@ const BADGE_FONT_SIZE = 10;
 const TITLE_FONT_SIZE = 18;
 const TITLE_LINE_HEIGHT = 1.22;
 
-// Caches
 const CACHE_ART = new Map();
 const CACHE_TTL = new Map();
 const CACHE_EMP = new Map();
 
-/* ---------- Helpers für Farben/Text-Kontrast ---------- */
 function hexToRgb(hex) {
   const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex || "");
   if (!m) return { r: 0, g: 0, b: 0 };
@@ -573,32 +538,7 @@ function contrastOn(hexColor) {
   return L > 0.53 ? "#111111" : "#FFFFFF";
 }
 
-/* ---------- setImage / setTitle helpers ---------- */
-function setImage(context, base64) {
-  ws.send(
-    JSON.stringify({
-      event: "setImage",
-      context,
-      payload: { image: base64, target: 0 },
-    })
-  );
-}
-function setTitle(context, title) {
-  ws.send(
-    JSON.stringify({
-      event: "setTitle",
-      context,
-      payload: { title: String(title || ""), target: 0 },
-    })
-  );
-}
-
-/* ---------- Leerer Key ---------- */
 function renderEmptyKey(context) {
-  if (!createCanvas) {
-    // Fallback: Bild leeren
-    return setImage(context, "");
-  }
   const k = "empty";
   if (CACHE_EMP.has(k)) return setImage(context, CACHE_EMP.get(k));
   const canvas = createCanvas(IMG_SIZE, IMG_SIZE);
@@ -609,12 +549,7 @@ function renderEmptyKey(context) {
   setImage(context, dataUrl);
 }
 
-/* ---------- Titel-Key ---------- */
 function renderTitleKey(context, titleText, color = "#4B5563") {
-  if (!createCanvas) {
-    // Fallback: Nur Text setzen
-    return setTitle(context, titleText || "");
-  }
   const key = JSON.stringify({
     t: titleText || "",
     c: color || "",
@@ -626,11 +561,10 @@ function renderTitleKey(context, titleText, color = "#4B5563") {
   const canvas = createCanvas(IMG_SIZE, IMG_SIZE);
   const ctx = canvas.getContext("2d");
 
-  // Hintergrund = Spurfarbe
   ctx.fillStyle = color;
   ctx.fillRect(0, 0, IMG_SIZE, IMG_SIZE);
 
-  const hasInterMed = GlobalFonts.has && GlobalFonts.has("Inter-Medium");
+  const hasInterMed = GlobalFonts.has("Inter-Medium");
   const baseFamily = hasInterMed ? "Inter-Medium" : "Segoe UI";
   ctx.font = `${TITLE_FONT_SIZE}px "${baseFamily}"`;
   ctx.fillStyle = contrastOn(color);
@@ -684,18 +618,8 @@ function renderTitleKey(context, titleText, color = "#4B5563") {
   setImage(context, dataUrl);
 }
 
-/* ---------- Artikulations-Key ---------- */
 function renderArtKey(context, art, color = "#4B5563", selected = false) {
   if (!hasArt(art)) return renderEmptyKey(context);
-
-  // Fallback ohne Canvas: setTitle (inkl. Noten-Badge)
-  if (!createCanvas) {
-    const label = (art?.name || "").toUpperCase();
-    const badge = Number.isInteger(art?.note)
-      ? `  (${noteBadgeText(art.note)})`
-      : "";
-    return setTitle(context, label + badge);
-  }
 
   const key = JSON.stringify({
     n: art?.name || "",
@@ -710,21 +634,17 @@ function renderArtKey(context, art, color = "#4B5563", selected = false) {
 
   const canvas = createCanvas(IMG_SIZE, IMG_SIZE);
   const ctx = canvas.getContext("2d");
-
   ctx.clearRect(0, 0, IMG_SIZE, IMG_SIZE);
 
   const headerColor = selected ? "#FFFFFF" : color;
   const textColor = selected ? color : "#FFFFFF";
 
-  // Header-Balken
   ctx.fillStyle = headerColor;
   ctx.fillRect(0, 0, IMG_SIZE, HEADER_H);
 
-  // Fonts
-  const hasInterSemi = GlobalFonts.has && GlobalFonts.has("Inter-SemiBold");
+  const hasInterSemi = GlobalFonts.has("Inter-SemiBold");
   const mainFamily = hasInterSemi ? "Inter-SemiBold" : "Segoe UI Semibold";
 
-  // Haupt-Label
   const label = (art?.name || "").toUpperCase();
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
@@ -738,7 +658,6 @@ function renderArtKey(context, art, color = "#4B5563", selected = false) {
   const areaCenterY = areaTop + 18;
   ctx.fillText(fitted, IMG_SIZE / 2, areaCenterY);
 
-  // Note-Badge
   if (Number.isInteger(art?.note)) {
     const badgeText = noteBadgeText(art.note);
     ctx.font = `${BADGE_FONT_SIZE}px "${mainFamily}"`;
@@ -751,7 +670,6 @@ function renderArtKey(context, art, color = "#4B5563", selected = false) {
     const y = IMG_SIZE - 8 - h;
 
     if (selected) {
-      // invertiert
       roundRect(ctx, x, y, wBox, h, 4, "#FFFFFF", 1);
       ctx.fillStyle = color;
     } else {
@@ -768,9 +686,16 @@ function renderArtKey(context, art, color = "#4B5563", selected = false) {
   setImage(context, dataUrl);
 }
 
-/* ---------------------------------------
-   Draw Helpers
----------------------------------------- */
+// Draw helpers
+function setImage(context, base64) {
+  ws.send(
+    JSON.stringify({
+      event: "setImage",
+      context,
+      payload: { image: base64, target: 0 },
+    })
+  );
+}
 function roundRect(ctx, x, y, w, h, r, fill = "#000", opacity = 1) {
   ctx.save();
   ctx.globalAlpha = opacity;
@@ -789,7 +714,6 @@ function roundRect(ctx, x, y, w, h, r, fill = "#000", opacity = 1) {
   ctx.fill();
   ctx.restore();
 }
-
 function noteBadgeText(n) {
   const names = [
     "C",
@@ -809,7 +733,6 @@ function noteBadgeText(n) {
   const octave = Math.floor(n / 12) - 1;
   return `${name}${octave} / ${n}`;
 }
-
 function ellipsizeToWidth(ctx, text, maxWidth) {
   if (!text) return "";
   if (ctx.measureText(text).width <= maxWidth) return text;
@@ -818,7 +741,6 @@ function ellipsizeToWidth(ctx, text, maxWidth) {
     t = t.slice(0, -1);
   return t ? t + "…" : "";
 }
-
 function extractInstrumentTitle(trackName) {
   if (!trackName) return "";
   return trackName
@@ -828,10 +750,15 @@ function extractInstrumentTitle(trackName) {
     .replace(/\s{2,}/g, " ")
     .trim();
 }
+function safeJson(x) {
+  try {
+    return typeof x === "string" ? JSON.parse(x) : JSON.parse(String(x));
+  } catch {
+    return null;
+  }
+}
 
-/* ---------------------------------------
-   Cleanup
----------------------------------------- */
+// Cleanup
 process.on("exit", () => {
   try {
     midiOut && midiOut.close();

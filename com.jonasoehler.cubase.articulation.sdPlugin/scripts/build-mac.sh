@@ -4,40 +4,32 @@ set -euo pipefail
 PLUGIN_FOLDER_NAME="com.jonasoehler.cubase.articulation.sdPlugin"
 DIST_ROOT="dist/mac"
 
-# Skriptordner -> Projektroot -> Kandidaten ermitteln
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+ROOT="$(cd "$(dirname "$0")"/.. && pwd)"
 
-if [[ -f "$PROJECT_ROOT/manifest.json" ]]; then
-  SRC="$PROJECT_ROOT"
-elif [[ -f "$PROJECT_ROOT/$PLUGIN_FOLDER_NAME/manifest.json" ]]; then
-  SRC="$PROJECT_ROOT/$PLUGIN_FOLDER_NAME"
+# SRC bestimmen (bereits im Plugin-Ordner oder eine Ebene drüber)
+if [[ -f "$ROOT/manifest.json" ]]; then
+  SRC="$ROOT"
+elif [[ -f "$ROOT/$PLUGIN_FOLDER_NAME/manifest.json" ]]; then
+  SRC="$ROOT/$PLUGIN_FOLDER_NAME"
 else
-  echo "Plugin-Quellordner nicht gefunden. Getestet:"
-  echo " - $PROJECT_ROOT"
-  echo " - $PROJECT_ROOT/$PLUGIN_FOLDER_NAME"
+  echo "Plugin source with manifest.json not found under: $ROOT or $ROOT/$PLUGIN_FOLDER_NAME" >&2
   exit 1
 fi
 
-OUTDIR="$PROJECT_ROOT/$DIST_ROOT"
+OUTDIR="$ROOT/$DIST_ROOT"
 PKGDIR="$OUTDIR/$(basename "$SRC")"
-ZIP_DIR="$PROJECT_ROOT/dist"
+DESTROOT="$ROOT/dist"
 
-ZIP_BASENAME="com.jonasoehler.cubase.articulation-mac"
-ZIP_TMP="$ZIP_DIR/$ZIP_BASENAME.zip"
-PKG="$ZIP_DIR/$ZIP_BASENAME.streamDeckPlugin"
-
-echo "[info] SCRIPT_DIR    = $SCRIPT_DIR"
-echo "[info] PROJECT_ROOT  = $PROJECT_ROOT"
-echo "[info] SRC           = $SRC"
-echo "[info] OUT           = $PKGDIR"
+echo "[info] ROOT       = $ROOT"
+echo "[info] SRC        = $SRC"
+echo "[info] OUT        = $PKGDIR"
+echo "[info] DESTROOT   = $DESTROOT"
 
 # Clean
 rm -rf "$OUTDIR"
-mkdir -p "$PKGDIR" "$ZIP_DIR"
-rm -f "$ZIP_TMP" "$PKG"
+mkdir -p "$PKGDIR" "$DESTROOT"
 
-# Bundling
+# Bundle
 echo "[build] bundle plugin.cjs"
 pushd "$SRC" >/dev/null
 npm i
@@ -46,13 +38,17 @@ popd >/dev/null
 
 # Dateien kopieren
 echo "[build] copy files"
-cp "$SRC/manifest.json" "$PKGDIR"
-cp "$SRC/plugin.cjs"    "$PKGDIR"
+cp "$SRC/plugin.cjs" "$PKGDIR"
 [[ -f "$SRC/profiles.json" ]] && cp "$SRC/profiles.json" "$PKGDIR"
 [[ -d "$SRC/assets" ]] && cp -R "$SRC/assets" "$PKGDIR"
 [[ -d "$SRC/propertyinspector" ]] && cp -R "$SRC/propertyinspector" "$PKGDIR"
+[[ -d "$SRC/remote" ]] && cp -R "$SRC/remote" "$PKGDIR"
 
-# Prod-Deps im Ziel
+# Manifest anpassen: CodePath -> plugin.cjs
+cp "$SRC/manifest.json" "$PKGDIR/manifest.json"
+node -e 'const fs=require("fs"); const p=process.argv[1]; const m=JSON.parse(fs.readFileSync(p,"utf8")); m.CodePath="plugin.cjs"; fs.writeFileSync(p, JSON.stringify(m,null,2));' "$PKGDIR/manifest.json"
+
+# Production-Deps im Ziel (native Addons)
 echo "[build] npm ci --omit=dev in $PKGDIR"
 cp "$SRC/package.json" "$PKGDIR"
 [[ -f "$SRC/package-lock.json" ]] && cp "$SRC/package-lock.json" "$PKGDIR"
@@ -60,18 +56,31 @@ pushd "$PKGDIR" >/dev/null
 npm ci --omit=dev
 popd >/dev/null
 
-# Sanity
-[[ -f "$PKGDIR/plugin.cjs" ]] || { echo "plugin.cjs fehlt im Paketordner ($PKGDIR)"; exit 1; }
+# Sanity-Checks
+if [[ ! -f "$PKGDIR/node_modules/@napi-rs/canvas-darwin-arm64/package.json" && \
+      ! -f "$PKGDIR/node_modules/@napi-rs/canvas-darwin-x64/package.json" ]]; then
+  echo "[warn] @napi-rs/canvas (darwin) not found under node_modules/@napi-rs/*"
+fi
+if [[ ! -f "$PKGDIR/node_modules/@julusian/midi/package.json" ]]; then
+  echo "[warn] @julusian/midi not found under node_modules/@julusian/*"
+fi
 
-# Packen (zip → rename)
-echo "[pack] zip → $ZIP_TMP"
-(
-  cd "$OUTDIR"
-  zip -r -q "$ZIP_TMP" "$(basename "$PKGDIR")"
-)
-echo "[pack] rename → $PKG"
-mv "$ZIP_TMP" "$PKG"
+# Packen via CLI (Fallback: zip -> .streamDeckPlugin)
+echo "[pack] using Stream Deck CLI into $DESTROOT"
+if command -v streamdeck >/dev/null 2>&1; then
+  streamdeck package --source "$OUTDIR" --output "$DESTROOT" || _cli_fail=1
+else
+  _cli_fail=1
+fi
 
-echo "[done] macOS Build fertig:"
-echo " - Ordner: $PKGDIR"
-echo " - Paket : $PKG"
+if [[ "${_cli_fail:-0}" -ne 0 ]]; then
+  echo "[pack] CLI not available or failed. Fallback zip -> .streamDeckPlugin"
+  ZIP="$DESTROOT/com.jonasoehler.cubase.articulation-mac.zip"
+  PKG="$DESTROOT/com.jonasoehler.cubase.articulation-mac.streamDeckPlugin"
+  rm -f "$ZIP" "$PKG"
+  (cd "$OUTDIR" && zip -r -q "$ZIP" "$(basename "$PKGDIR")")
+  mv "$ZIP" "$PKG"
+  echo "[pack] created $PKG"
+fi
+
+echo "macOS build and package completed."
