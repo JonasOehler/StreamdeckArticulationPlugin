@@ -3,8 +3,11 @@ name: Build & Release
 on:
   push:
     tags:
-      - "v*" # Release bei Tags wie v1.0.0
-  workflow_dispatch: # manueller Start
+      - "v*" # Release on tags like v1.0.0
+  workflow_dispatch:
+
+permissions:
+  contents: write # needed for creating releases
 
 jobs:
   build_windows:
@@ -71,7 +74,7 @@ jobs:
       - name: Prepare exec bits
         run: |
           chmod +x scripts/install-remote-api.sh
-          chmod +x "scripts/Install Remote API.command"
+          chmod +x scripts/install-remote-api-mac.command
 
       - name: Make RemoteInstaller-mac.zip
         run: |
@@ -80,7 +83,7 @@ jobs:
           zip -r ../dist/RemoteInstaller-mac.zip \
             "../remote/Elgato_StreamDeckXL.js" \
             "install-remote-api.sh" \
-            "Install Remote API.command"
+            "install-remote-api-mac.command"
 
       - name: Upload artifact – RemoteInstaller-mac.zip
         uses: actions/upload-artifact@v4
