@@ -1,15 +1,19 @@
 /* eslint-disable no-console */
 "use strict";
 
-const WebSocket = require("ws");
-const easymidi = require("easymidi");
+/**
+ * Cubase Articulations – robuste Version
+ * - Native Module (@napi-rs/canvas, easymidi) OPTIONAL & LAZY
+ * - Fallbacks: Rendering via setTitle, Betrieb ohne MIDI
+ * - Frühes Logging vor externen require()s
+ */
+
 const fs = require("fs");
 const path = require("path");
-const { createCanvas, GlobalFonts } = require("@napi-rs/canvas");
 
-/* ---------------------------------------
-   Logging (Konsole + Datei)
----------------------------------------- */
+/* -------------------------
+   Mini-Logger: ganz früh!
+-------------------------- */
 const LOG_PATH = path.join(__dirname, "plugin.log");
 function ts() {
   const d = new Date();
@@ -29,7 +33,53 @@ function w(line) {
     console.log(line);
   } catch (_) {}
 }
-w("==== Cubase Articulations Plugin START ====");
+function fatal(msg, err) {
+  w(`[FATAL] ${msg}: ${err && (err.stack || err.message || err)}`);
+  process.exit(1);
+}
+w("==== Cubase Articulations Plugin START (safe requires) ====");
+
+/* -------------------------
+   Externe Module sicher laden
+-------------------------- */
+let WebSocket;
+try {
+  WebSocket = require("ws");
+  w("[DBG] ws module geladen");
+} catch (e) {
+  fatal("ws module konnte nicht geladen werden", e);
+}
+
+let easymidi = null;
+try {
+  easymidi = require("easymidi");
+  w("[DBG] easymidi geladen");
+} catch (e) {
+  w(`[WRN] easymidi NICHT verfügbar: ${e && e.message}`);
+}
+
+let createCanvas = null;
+let GlobalFonts = { has: () => false, registerFromPath: () => {} };
+try {
+  ({ createCanvas, GlobalFonts } = require("@napi-rs/canvas"));
+  w("[DBG] @napi-rs/canvas geladen");
+} catch (e) {
+  w(
+    `[WRN] @napi-rs/canvas NICHT verfügbar – Fallback auf setTitle: ${
+      e && e.message
+    }`
+  );
+}
+
+/* -------------------------
+   Schutznetze für Laufzeit
+-------------------------- */
+process.on("uncaughtException", (err) => {
+  w(`[UNCAUGHT] ${err && (err.stack || err)}`);
+});
+process.on("unhandledRejection", (reason) => {
+  w(`[UNHANDLED REJECTION] ${reason && (reason.stack || reason)}`);
+});
 
 /* ---------------------------------------
    Fonts (optional)
@@ -47,16 +97,35 @@ try {
     "fonts",
     "Inter-Medium.ttf"
   );
-  if (fs.existsSync(fontSemiBold)) {
+  if (
+    fs.existsSync(fontSemiBold) &&
+    GlobalFonts &&
+    GlobalFonts.registerFromPath
+  ) {
     GlobalFonts.registerFromPath(fontSemiBold, "Inter-SemiBold");
     w(`[DBG] Font registriert: ${fontSemiBold}`);
   }
-  if (fs.existsSync(fontMedium)) {
+  if (
+    fs.existsSync(fontMedium) &&
+    GlobalFonts &&
+    GlobalFonts.registerFromPath
+  ) {
     GlobalFonts.registerFromPath(fontMedium, "Inter-Medium");
     w(`[DBG] Font registriert: ${fontMedium}`);
   }
 } catch (e) {
   w(`[WRN] Konnte Fonts nicht registrieren: ${e && e.message}`);
+}
+
+/* ---------------------------------------
+   Utils
+---------------------------------------- */
+function safeJson(x) {
+  try {
+    return typeof x === "string" ? JSON.parse(x) : JSON.parse(String(x));
+  } catch {
+    return null;
+  }
 }
 
 /* ---------------------------------------
@@ -79,19 +148,17 @@ w(
     infoVersion: info.application?.version || "",
   })}`
 );
-
 if (!port || !pluginUUID || !registerEvent) {
   w("[ERR] Fehlende Startparameter (-port/-pluginUUID/-registerEvent).");
   process.exit(1);
 }
 
 /* ---------------------------------------
-   MIDI I/O
+   MIDI I/O (optional)
 ---------------------------------------- */
 const TARGET_MIDI_OUT = "NodeToCubase";
 const TARGET_MIDI_IN = "CubaseToNode";
 
-// CC-Mapping & Kanal-Whitelist für Farbe
 const COLOR_CC = { R: 20, G: 21, B: 22 };
 const COLOR_CH = 14; // 0..15 => Kanal 15
 
@@ -99,6 +166,10 @@ let midiOut = null,
   midiIn = null;
 
 function setupMidi() {
+  if (!easymidi) {
+    w("[WRN] MIDI deaktiviert (easymidi nicht geladen)");
+    return;
+  }
   try {
     const outs = easymidi.getOutputs();
     const ins = easymidi.getInputs();
@@ -132,7 +203,6 @@ function setupMidi() {
         onSysexFromCubase(msg.bytes);
       });
       midiIn.on("cc", (msg) => {
-        // Nur CC 20/21/22 auf Kanal 15 akzeptieren
         w(
           `[DBG] [MIDI<-Cubase] CC ${msg.controller} = ${msg.value} ch ${msg.channel}`
         );
@@ -158,7 +228,8 @@ function setupMidi() {
 }
 
 function sendNote(noteNumber, channel = 0, velocity = 127, lengthMs = 110) {
-  if (!midiOut) return w("[ERR] Kein MIDI Out aktiv.");
+  if (!midiOut) return w("[ERR] Kein MIDI Out aktiv oder MIDI deaktiviert.");
+  w(`[DBG] sendNote ${noteNumber} ch=${channel} vel=${velocity}`);
   midiOut.send("noteon", { note: noteNumber, velocity, channel });
   setTimeout(
     () => midiOut.send("noteoff", { note: noteNumber, velocity: 0, channel }),
@@ -167,7 +238,7 @@ function sendNote(noteNumber, channel = 0, velocity = 127, lengthMs = 110) {
 }
 
 /* ---------------------------------------
-   Profiles laden (ohne Farben!)
+   Profiles laden
 ---------------------------------------- */
 const profilesPath = path.join(__dirname, "profiles.json");
 let profiles = {};
@@ -187,7 +258,7 @@ const deviceState = new Map();
  * deviceState: Map<deviceId, {
  *   contextsByCoord: Map<'c,r', context>,
  *   articulations: Array<{ name, note }>,
- *   color: string,                        // immer: Spurfarbe aus Cubase
+ *   color: string,
  *   profileKey: string|null,
  *   selectedArtIdx: number|null,
  *   instrumentTitle: string
@@ -255,7 +326,7 @@ function ensureDeviceState(deviceId) {
     deviceState.set(deviceId, {
       contextsByCoord: new Map(),
       articulations: [],
-      color: "#4B5563", // neutral grau bis Cubase-Farbe kommt
+      color: "#4B5563",
       profileKey: null,
       selectedArtIdx: null,
       instrumentTitle: "",
@@ -362,7 +433,7 @@ function onSysexFromCubase(bytes) {
 
 // Farbe via CC#20 (R), #21 (G), #22 (B) [0..127] – nur auf Kanal 15
 const colorState = { r: null, g: null, b: null, timer: null };
-function onCcFromCubase({ controller, value, channel }) {
+function onCcFromCubase({ controller, value /*, channel */ }) {
   if (controller === COLOR_CC.R) colorState.r = value;
   else if (controller === COLOR_CC.G) colorState.g = value;
   else if (controller === COLOR_CC.B) colorState.b = value;
@@ -394,21 +465,21 @@ function rgbToHex(r, g, b) {
   )}${toHex(Math.max(0, Math.min(255, b)))}`;
 }
 
-// *** ANGEPASST: Titel immer setzen, Arts nur wenn "KS" vorhanden ***
+// Titel immer setzen; Arts nur wenn Trackname auf „... KS“ endet
 function applyProfileForTrack(trackName) {
   const trimmed = String(trackName || "").trim();
   const hasKS = /\bKS\b$/i.test(trimmed);
 
-  // Titel immer aus Trackname extrahieren (unabhängig von KS)
   const title = extractInstrumentTitle(trimmed);
 
-  // Nur bei KS: Profil suchen & Artikulationen übernehmen
   let key = null;
   let arts = [];
   if (hasKS) {
+    // Robuster: Substring-Match statt Regex
     key =
-      Object.keys(profiles).find((k) => new RegExp(k, "i").test(trimmed)) ||
-      null;
+      Object.keys(profiles).find((k) =>
+        trimmed.toLowerCase().includes(k.toLowerCase())
+      ) || null;
     const profile = key ? profiles[key] || {} : {};
     arts = (profile.articulations || []).map((a) => ({
       name: a.name || "",
@@ -422,9 +493,9 @@ function applyProfileForTrack(trackName) {
 
   for (const [deviceId, st] of deviceState) {
     st.profileKey = hasKS ? key : null;
-    st.articulations = hasKS ? arts : []; // <- leeren, wenn kein KS
-    st.instrumentTitle = title; // <- Titel immer aktualisieren
-    st.selectedArtIdx = null; // <- Auswahl zurücksetzen
+    st.articulations = hasKS ? arts : [];
+    st.instrumentTitle = title;
+    st.selectedArtIdx = null;
     w(
       `[PROFILE] KS=${hasKS ? "yes" : "no"} | Match: ${
         key || "(none)"
@@ -466,7 +537,7 @@ async function renderProfileForDevice(deviceId) {
 }
 
 /* ---------------------------------------
-   Rendering
+   Rendering (Canvas oder Fallback)
 ---------------------------------------- */
 const IMG_SIZE = 96;
 const HEADER_H = 8;
@@ -499,12 +570,35 @@ function relLuminance({ r, g, b }) {
 }
 function contrastOn(hexColor) {
   const L = relLuminance(hexToRgb(hexColor));
-  // Schwelle ~0.53 liefert in der Praxis bessere Lesbarkeit auf knalligen Farbtönen
   return L > 0.53 ? "#111111" : "#FFFFFF";
+}
+
+/* ---------- setImage / setTitle helpers ---------- */
+function setImage(context, base64) {
+  ws.send(
+    JSON.stringify({
+      event: "setImage",
+      context,
+      payload: { image: base64, target: 0 },
+    })
+  );
+}
+function setTitle(context, title) {
+  ws.send(
+    JSON.stringify({
+      event: "setTitle",
+      context,
+      payload: { title: String(title || ""), target: 0 },
+    })
+  );
 }
 
 /* ---------- Leerer Key ---------- */
 function renderEmptyKey(context) {
+  if (!createCanvas) {
+    // Fallback: Bild leeren
+    return setImage(context, "");
+  }
   const k = "empty";
   if (CACHE_EMP.has(k)) return setImage(context, CACHE_EMP.get(k));
   const canvas = createCanvas(IMG_SIZE, IMG_SIZE);
@@ -515,8 +609,12 @@ function renderEmptyKey(context) {
   setImage(context, dataUrl);
 }
 
-/* ---------- Titel-Key (volle Fläche, zentriert, adaptive Schriftfarbe) ---------- */
+/* ---------- Titel-Key ---------- */
 function renderTitleKey(context, titleText, color = "#4B5563") {
+  if (!createCanvas) {
+    // Fallback: Nur Text setzen
+    return setTitle(context, titleText || "");
+  }
   const key = JSON.stringify({
     t: titleText || "",
     c: color || "",
@@ -532,14 +630,13 @@ function renderTitleKey(context, titleText, color = "#4B5563") {
   ctx.fillStyle = color;
   ctx.fillRect(0, 0, IMG_SIZE, IMG_SIZE);
 
-  const hasInterMed = GlobalFonts.has("Inter-Medium");
+  const hasInterMed = GlobalFonts.has && GlobalFonts.has("Inter-Medium");
   const baseFamily = hasInterMed ? "Inter-Medium" : "Segoe UI";
   ctx.font = `${TITLE_FONT_SIZE}px "${baseFamily}"`;
   ctx.fillStyle = contrastOn(color);
   ctx.textAlign = "center";
   ctx.textBaseline = "alphabetic";
 
-  // Split bei Spaces, lange Wörter ellipsen
   const maxWidth = IMG_SIZE - 10;
   const words = String(titleText || "")
     .trim()
@@ -553,7 +650,6 @@ function renderTitleKey(context, titleText, color = "#4B5563") {
       : ellipsizeToWidth(ctx, w, maxWidth)
   );
 
-  // Metriken + vertikale Zentrierung
   const lineMetrics = lines.map((line) => {
     const m = ctx.measureText(line || " ");
     const asc = Number.isFinite(m.actualBoundingBoxAscent)
@@ -589,10 +685,17 @@ function renderTitleKey(context, titleText, color = "#4B5563") {
 }
 
 /* ---------- Artikulations-Key ---------- */
-/*  Unselected:  BG transparent, Header = Spurfarbe, Text = Weiß, Badge dunkel
-    Selected  :  BG transparent, Header = Weiß, Text = Spurfarbe, Badge invertiert */
 function renderArtKey(context, art, color = "#4B5563", selected = false) {
   if (!hasArt(art)) return renderEmptyKey(context);
+
+  // Fallback ohne Canvas: setTitle (inkl. Noten-Badge)
+  if (!createCanvas) {
+    const label = (art?.name || "").toUpperCase();
+    const badge = Number.isInteger(art?.note)
+      ? `  (${noteBadgeText(art.note)})`
+      : "";
+    return setTitle(context, label + badge);
+  }
 
   const key = JSON.stringify({
     n: art?.name || "",
@@ -618,7 +721,7 @@ function renderArtKey(context, art, color = "#4B5563", selected = false) {
   ctx.fillRect(0, 0, IMG_SIZE, HEADER_H);
 
   // Fonts
-  const hasInterSemi = GlobalFonts.has("Inter-SemiBold");
+  const hasInterSemi = GlobalFonts.has && GlobalFonts.has("Inter-SemiBold");
   const mainFamily = hasInterSemi ? "Inter-SemiBold" : "Segoe UI Semibold";
 
   // Haupt-Label
@@ -668,16 +771,6 @@ function renderArtKey(context, art, color = "#4B5563", selected = false) {
 /* ---------------------------------------
    Draw Helpers
 ---------------------------------------- */
-function setImage(context, base64) {
-  ws.send(
-    JSON.stringify({
-      event: "setImage",
-      context,
-      payload: { image: base64, target: 0 },
-    })
-  );
-}
-
 function roundRect(ctx, x, y, w, h, r, fill = "#000", opacity = 1) {
   ctx.save();
   ctx.globalAlpha = opacity;
@@ -737,16 +830,8 @@ function extractInstrumentTitle(trackName) {
 }
 
 /* ---------------------------------------
-   Utils & Cleanup
+   Cleanup
 ---------------------------------------- */
-function safeJson(x) {
-  try {
-    return typeof x === "string" ? JSON.parse(x) : JSON.parse(String(x));
-  } catch {
-    return null;
-  }
-}
-
 process.on("exit", () => {
   try {
     midiOut && midiOut.close();

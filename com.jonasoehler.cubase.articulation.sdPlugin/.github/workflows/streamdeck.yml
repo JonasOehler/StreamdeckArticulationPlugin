@@ -1,0 +1,96 @@
+name: Build & Package Stream Deck Plugin
+
+on:
+  push:
+    branches: [main, master]
+    tags: ["v*", "release-*"]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  PLUGIN_DIR: com.jonasoehler.cubase.articulation.sdPlugin
+  WIN_DIST_SUBDIR: dist/win
+  MAC_DIST_SUBDIR: dist/mac
+
+jobs:
+  windows:
+    name: Windows build & pack
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: ${{ env.PLUGIN_DIR }}/package-lock.json
+
+      - name: Install Stream Deck CLI
+        run: npm i -g @elgato/cli@latest
+
+      - name: Print CLI version
+        run: streamdeck --version
+
+      - name: Build (bundle + stage)
+        shell: pwsh
+        working-directory: ${{ env.PLUGIN_DIR }}
+        run: |
+          # Skripte liegen bei dir unter ./scripts
+          powershell -ExecutionPolicy Bypass -File ./scripts/build-win.ps1
+
+      - name: Pack with CLI
+        shell: pwsh
+        working-directory: ${{ env.PLUGIN_DIR }}/${{ env.WIN_DIST_SUBDIR }}
+        run: |
+          # Hier liegt der fertig gestagte Plugin-Ordner
+          dir
+          streamdeck pack ${{ env.PLUGIN_DIR }}
+
+      - name: Upload artifact (.streamDeckPlugin)
+        uses: actions/upload-artifact@v4
+        with:
+          name: plugin-windows
+          path: ${{ env.PLUGIN_DIR }}/dist/*.streamDeckPlugin
+
+  macos:
+    name: macOS build & pack
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: ${{ env.PLUGIN_DIR }}/package-lock.json
+
+      - name: Install Stream Deck CLI
+        run: npm i -g @elgato/cli@latest
+
+      - name: Print CLI version
+        run: streamdeck --version
+
+      - name: Make build script executable
+        run: chmod +x ./scripts/build-mac.sh
+        working-directory: ${{ env.PLUGIN_DIR }}
+
+      - name: Build (bundle + stage)
+        run: ./scripts/build-mac.sh
+        working-directory: ${{ env.PLUGIN_DIR }}
+
+      - name: Pack with CLI
+        run: |
+          ls -la
+          cd ${{ env.MAC_DIST_SUBDIR }}
+          streamdeck pack ${{ env.PLUGIN_DIR }}
+        working-directory: ${{ env.PLUGIN_DIR }}
+
+      - name: Upload artifact (.streamDeckPlugin)
+        uses: actions/upload-artifact@v4
+        with:
+          name: plugin-macos
+          path: ${{ env.PLUGIN_DIR }}/dist/*.streamDeckPlugin
