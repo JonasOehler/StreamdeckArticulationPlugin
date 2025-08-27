@@ -3,8 +3,8 @@ name: Build & Release
 on:
   push:
     tags:
-      - "v*" # Release läuft bei Tag wie v1.1.0
-  workflow_dispatch: # manueller Start möglich
+      - "v*" # Release bei Tags wie v1.0.0
+  workflow_dispatch: # manueller Start
 
 jobs:
   build_windows:
@@ -24,20 +24,15 @@ jobs:
         with:
           node-version: "20"
 
-      - name: Install Stream Deck CLI
+      - name: Install Stream Deck CLI (optional)
         run: npm i -g @elgato/cli@latest
 
-      - name: Build (esbuild) + package folder
-        run: |
-          powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-win.ps1
-
-      - name: Pack .streamDeckPlugin (Stream Deck CLI)
-        run: |
-          # packt ins ./dist (CLI erkennt manifest automatisch im CWD)
-          streamdeck pack --output dist
+      - name: Build & Package (PowerShell script)
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-win.ps1
 
       - name: Make RemoteInstaller-win.zip
         run: |
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
           $zip = Join-Path "dist" "RemoteInstaller-win.zip"
           if (Test-Path $zip) { Remove-Item -Force $zip }
           $files = @(
@@ -47,7 +42,7 @@ jobs:
           )
           Compress-Archive -Path $files -DestinationPath $zip
 
-      - name: Upload artifact – plugin
+      - name: Upload artifact – plugin (Windows)
         uses: actions/upload-artifact@v4
         with:
           name: plugin-windows
