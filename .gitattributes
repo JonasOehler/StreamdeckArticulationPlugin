@@ -1,0 +1,7 @@
+# Shell / macOS Launcher immer mit LF auschecken
+*.sh       text eol=lf
+*.command  text eol=lf
+
+# PowerShell darf CRLF behalten
+*.ps1      text eol=crlf
+*.cmd      text eol=crlf
