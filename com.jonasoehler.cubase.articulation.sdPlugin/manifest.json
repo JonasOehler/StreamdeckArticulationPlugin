@@ -4,7 +4,7 @@
   "Author": "Jonas Oehler",
   "Name": "Cubase Articulations",
   "Description": "Steuert Articulations via MIDI aus Cubase-Tracknamen, ohne das Stream Deck zu übernehmen.",
-  "Version": "1.1.0.3",
+  "Version": "1.1.0.4",
   "Icon": "assets/icon",
   "URL": "https://example.com",
 
