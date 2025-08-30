@@ -1,16 +1,13 @@
 {
-  "Pacific Strings Violin KS": {
+  "CSS VLN 1 LONG KS": {
     "articulations": [
-      { "name": "Legato", "note": 36 },
-      { "name": "Spiccato", "note": 37 },
-      { "name": "Staccato", "note": 38 },
-      { "name": "Pizzicato", "note": 39 }
-    ]
-  },
-  "Cinesamples Brass KS": {
-    "articulations": [
-      { "name": "Staccato", "note": 12 },
-      { "name": "Legato", "note": 14 }
+      { "name": "Leg Stdrd", "note": 12 },
+      { "name": "Leg Advanced", "note": 13 },
+      { "name": "Trem", "note": 14 },
+      { "name": "Trills", "note": 16 },
+      { "name": "Harm", "note": 17 },
+      { "name": "Marcato", "note": 22 },
+      { "name": "Marc Spicc", "note": 23 }
     ]
   }
 }

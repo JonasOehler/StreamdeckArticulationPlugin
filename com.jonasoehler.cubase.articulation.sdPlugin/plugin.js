@@ -438,16 +438,15 @@ function rgbToHex(r, g, b) {
 
 // Titel immer setzen; Arts nur wenn "KS" vorhanden
 function applyProfileForTrack(trackName) {
-  const trimmed = String(trackName || "").trim();
-  const hasKS = /\bKS\b$/i.test(trimmed);
-  const title = extractInstrumentTitle(trimmed);
+  const raw = String(trackName || "").trim();
+  const hasKS = /\bKS\b$/i.test(raw);
+  const title = extractInstrumentTitle(raw);
 
   let key = null;
   let arts = [];
   if (hasKS) {
     key =
-      Object.keys(profiles).find((k) => new RegExp(k, "i").test(trimmed)) ||
-      null;
+      Object.keys(profiles).find((k) => new RegExp(k, "i").test(raw)) || null;
     const profile = key ? profiles[key] || {} : {};
     arts = (profile.articulations || []).map((a) => ({
       name: a.name || "",
@@ -645,18 +644,34 @@ function renderArtKey(context, art, color = "#4B5563", selected = false) {
   const hasInterSemi = GlobalFonts.has("Inter-SemiBold");
   const mainFamily = hasInterSemi ? "Inter-SemiBold" : "Segoe UI Semibold";
 
-  const label = (art?.name || "").toUpperCase();
+  // --- NEU: Zwei-Zeilen-Layout bei Leerzeichen ---
+  const rawLabel = art?.name || "";
+  const label = rawLabel.toUpperCase();
+
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.fillStyle = textColor;
   ctx.font = `${MAIN_FONT_SIZE}px "${mainFamily}"`;
 
   const maxWidth = IMG_SIZE - 12;
-  const fitted = ellipsizeToWidth(ctx, label, maxWidth);
 
   const areaTop = HEADER_H + 18;
   const areaCenterY = areaTop + 18;
-  ctx.fillText(fitted, IMG_SIZE / 2, areaCenterY);
+
+  if (/\s+/.test(rawLabel)) {
+    // 1. Wort in Zeile 1, Rest in Zeile 2
+    const parts = label.trim().split(/\s+/);
+    const line1 = ellipsizeToWidth(ctx, parts[0] || "", maxWidth);
+    const line2 = ellipsizeToWidth(ctx, parts.slice(1).join(" "), maxWidth);
+
+    const lineH = Math.round(MAIN_FONT_SIZE * 1.15);
+    ctx.fillText(line1, IMG_SIZE / 2, areaCenterY - lineH / 2);
+    ctx.fillText(line2, IMG_SIZE / 2, areaCenterY + lineH / 2);
+  } else {
+    // Einzeilig wie zuvor
+    const fitted = ellipsizeToWidth(ctx, label, maxWidth);
+    ctx.fillText(fitted, IMG_SIZE / 2, areaCenterY);
+  }
 
   if (Number.isInteger(art?.note)) {
     const badgeText = noteBadgeText(art.note);
@@ -741,15 +756,40 @@ function ellipsizeToWidth(ctx, text, maxWidth) {
     t = t.slice(0, -1);
   return t ? t + "…" : "";
 }
+
+/**
+ * Extrahiert den reinen Instrumentennamen für den Titel-Button.
+ * - entfernt führenden Präfix "[a]" .. "[z]" (Groß/Kleinschreibung egal)
+ * - entfernt ein finales "KS"
+ * - entfernt optionale Zusätze nach " - " sowie Klammern
+ * - normalisiert Mehrfach-Leerzeichen
+ * Beispiele:
+ *   "[a] Pacific Strings Violin KS" -> "Pacific Strings Violin"
+ *   "[b] Berlin Brass"              -> "Berlin Brass"
+ */
 function extractInstrumentTitle(trackName) {
   if (!trackName) return "";
-  return trackName
-    .replace(/\bKS\b\s*$/i, "")
-    .replace(/\s*-\s*.*/g, "")
-    .replace(/\s*\(.*?\)\s*/g, "")
-    .replace(/\s{2,}/g, " ")
-    .trim();
+  let t = String(trackName).trim();
+
+  // [a] / [B] Präfix am Anfang entfernen
+  t = t.replace(/^\s*\[[a-z]\]\s*/i, "");
+
+  // finales "KS" (optional mit Leerzeichen davor) entfernen
+  t = t.replace(/\bKS\b\s*$/i, "");
+
+  // nur Suffixe mit Leerzeichen-umrahmtem Strich kappen: " - ..." oder " – ..."
+  // (U-HE bleibt unangetastet)
+  t = t.replace(/\s+[-–]\s+.*$/, "");
+
+  // optionale Klammern am Ende entfernen
+  t = t.replace(/\s*\([^)]*\)\s*$/, "");
+
+  // Mehrfach-Leerzeichen normalisieren
+  t = t.replace(/\s{2,}/g, " ").trim();
+
+  return t;
 }
+
 function safeJson(x) {
   try {
     return typeof x === "string" ? JSON.parse(x) : JSON.parse(String(x));
