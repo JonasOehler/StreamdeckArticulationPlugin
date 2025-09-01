@@ -219,7 +219,7 @@ function sendNote(noteNumber, channel = 0, velocity = 127, lengthMs = 110) {
 }
 
 // ---------------------------------------
-// Profiles laden
+// Profiles laden + Live-Reload
 // ---------------------------------------
 const profilesPath = path.join(__dirname, "profiles.json");
 let profiles = {};
@@ -230,6 +230,56 @@ try {
   w("[WRN] profiles.json missing/unreadable – using empty mapping.");
   profiles = {};
 }
+
+// Live-Reload: Watcher mit Debounce
+let profilesWatch = null;
+let profilesReloadTimer = null;
+
+function loadProfilesFromDisk() {
+  try {
+    const txt = fs.readFileSync(profilesPath, "utf-8");
+    const next = JSON.parse(txt);
+    profiles = next || {};
+    w(
+      `[INFO] profiles.json reloaded (${
+        Object.keys(profiles).length
+      } profiles).`
+    );
+    // Sofort anwenden: aktuellen Track re-berechnen oder alles rendern
+    if (lastTrackName) {
+      applyProfileForTrack(lastTrackName);
+    } else {
+      for (const [deviceId] of deviceState) renderProfileForDevice(deviceId);
+    }
+  } catch (e) {
+    w(`[WRN] Could not reload profiles.json: ${e && e.message}`);
+  }
+}
+
+function startProfilesWatcher() {
+  const dir = path.dirname(profilesPath);
+  try {
+    profilesWatch && profilesWatch.close();
+  } catch {}
+  try {
+    profilesWatch = fs.watch(dir, (eventType, filename) => {
+      if (!filename) return;
+      const isProfiles =
+        filename.toString().toLowerCase() ===
+        path.basename(profilesPath).toLowerCase();
+      if (!isProfiles) return;
+      if (profilesReloadTimer) clearTimeout(profilesReloadTimer);
+      profilesReloadTimer = setTimeout(() => {
+        w("[DBG] profiles.json change detected -> reloading …");
+        loadProfilesFromDisk();
+      }, 150);
+    });
+    w(`[INFO] Watching profiles.json for changes: ${profilesPath}`);
+  } catch (e) {
+    w(`[WRN] Could not watch profiles.json: ${e && e.message}`);
+  }
+}
+startProfilesWatcher();
 
 // ---------------------------------------
 // State je Gerät
@@ -448,9 +498,11 @@ function applyProfileForTrack(trackName) {
     key =
       Object.keys(profiles).find((k) => new RegExp(k, "i").test(raw)) || null;
     const profile = key ? profiles[key] || {} : {};
+
+    // <<------- HIER: note kann Zahl ODER String (z. B. "D#-1") sein
     arts = (profile.articulations || []).map((a) => ({
       name: a.name || "",
-      note: a.note,
+      note: parseNoteToMidi(a.note), // konvertiert z. B. "Db0" -> 13 etc.
     }));
   } else {
     w(
@@ -511,6 +563,9 @@ const MAIN_FONT_SIZE = 16;
 const BADGE_FONT_SIZE = 10;
 const TITLE_FONT_SIZE = 18;
 const TITLE_LINE_HEIGHT = 1.22;
+
+// --- Anzeige-Basis für Oktaven (Cubase-Default -2 = C-2 ist Note 0)
+const DISPLAY_OCTAVE_BASE = Number(process.env.MIDI_OCTAVE_BASE ?? "-2");
 
 const CACHE_ART = new Map();
 const CACHE_TTL = new Map();
@@ -627,6 +682,7 @@ function renderArtKey(context, art, color = "#4B5563", selected = false) {
     s: !!selected,
     mf: MAIN_FONT_SIZE,
     bf: BADGE_FONT_SIZE,
+    ob: DISPLAY_OCTAVE_BASE,
   });
   const cached = CACHE_ART.get(key);
   if (cached) return setImage(context, cached);
@@ -644,7 +700,7 @@ function renderArtKey(context, art, color = "#4B5563", selected = false) {
   const hasInterSemi = GlobalFonts.has("Inter-SemiBold");
   const mainFamily = hasInterSemi ? "Inter-SemiBold" : "Segoe UI Semibold";
 
-  // --- NEU: Zwei-Zeilen-Layout bei Leerzeichen ---
+  // Zwei-Zeilen-Layout bei Leerzeichen
   const rawLabel = art?.name || "";
   const label = rawLabel.toUpperCase();
 
@@ -668,7 +724,7 @@ function renderArtKey(context, art, color = "#4B5563", selected = false) {
     ctx.fillText(line1, IMG_SIZE / 2, areaCenterY - lineH / 2);
     ctx.fillText(line2, IMG_SIZE / 2, areaCenterY + lineH / 2);
   } else {
-    // Einzeilig wie zuvor
+    // Einzeilig
     const fitted = ellipsizeToWidth(ctx, label, maxWidth);
     ctx.fillText(fitted, IMG_SIZE / 2, areaCenterY);
   }
@@ -729,6 +785,8 @@ function roundRect(ctx, x, y, w, h, r, fill = "#000", opacity = 1) {
   ctx.fill();
   ctx.restore();
 }
+
+// === Badge-Text: nutzt DISPLAY_OCTAVE_BASE für die Oktaven-Anzeige ===
 function noteBadgeText(n) {
   const names = [
     "C",
@@ -745,9 +803,70 @@ function noteBadgeText(n) {
     "B",
   ];
   const name = names[((n % 12) + 12) % 12];
-  const octave = Math.floor(n / 12) - 1;
+  const octave = Math.floor(n / 12) + DISPLAY_OCTAVE_BASE;
   return `${name}${octave} / ${n}`;
 }
+
+// === Parser: Profile-"note" als Zahl ODER String (z. B. "Db-1", "C#0", "12") ===
+// - Oktavangabe wird in derselben Logik interpretiert wie Anzeige (DISPLAY_OCTAVE_BASE).
+//   Beispiel (Default -2):
+//   "C-2" -> 0, "C-1" -> 12, "D#-1" -> 15 usw.
+function parseNoteToMidi(v) {
+  if (v == null) return null;
+
+  // Zahl oder Zahl-String (z. B. "14")
+  if (typeof v === "number" && Number.isFinite(v)) {
+    return clampMidi(v);
+  }
+  if (typeof v === "string" && /^\s*\d+\s*$/.test(v)) {
+    return clampMidi(parseInt(v.trim(), 10));
+  }
+
+  if (typeof v !== "string") {
+    w(`[WRN] Unsupported note type: ${typeof v}`);
+    return null;
+  }
+
+  const s = v.trim().replace(/♯/g, "#").replace(/♭/g, "b").replace(/\s+/g, "");
+
+  // Allow letters A..G or H (H == B)
+  const m = /^([A-Ga-gHh])([#b]?)(-?\d+)$/.exec(s);
+  if (!m) {
+    w(
+      `[WRN] Could not parse note string "${v}" – expected like C#-1, Db0, A3, 12`
+    );
+    return null;
+  }
+
+  let [, noteLetter, accidental, octaveStr] = m;
+  noteLetter = noteLetter.toUpperCase();
+  const octave = parseInt(octaveStr, 10);
+
+  // pitch class base (English + optional 'H' alias to B)
+  const basePcMap = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11, H: 11 };
+  let pc = basePcMap[noteLetter];
+  if (pc == null) {
+    w(`[WRN] Unknown note letter "${noteLetter}"`);
+    return null;
+  }
+  if (accidental === "#") pc += 1;
+  else if (accidental === "b") pc -= 1;
+
+  pc = ((pc % 12) + 12) % 12;
+
+  // inverse der Anzeige-Formel:
+  // badge: octave = floor(n/12) + DISPLAY_OCTAVE_BASE
+  // -> n soll so sein, dass C(octave) = 12*(octave - DISPLAY_OCTAVE_BASE)
+  const midi = 12 * (octave - DISPLAY_OCTAVE_BASE) + pc;
+  return clampMidi(midi);
+}
+
+function clampMidi(n) {
+  const x = Math.max(0, Math.min(127, Math.round(n)));
+  if (x !== n) w(`[WRN] MIDI note clamped to ${x} (from ${n})`);
+  return x;
+}
+
 function ellipsizeToWidth(ctx, text, maxWidth) {
   if (!text) return "";
   if (ctx.measureText(text).width <= maxWidth) return text;
@@ -763,9 +882,6 @@ function ellipsizeToWidth(ctx, text, maxWidth) {
  * - entfernt ein finales "KS"
  * - entfernt optionale Zusätze nach " - " sowie Klammern
  * - normalisiert Mehrfach-Leerzeichen
- * Beispiele:
- *   "[a] Pacific Strings Violin KS" -> "Pacific Strings Violin"
- *   "[b] Berlin Brass"              -> "Berlin Brass"
  */
 function extractInstrumentTitle(trackName) {
   if (!trackName) return "";
@@ -777,8 +893,7 @@ function extractInstrumentTitle(trackName) {
   // finales "KS" (optional mit Leerzeichen davor) entfernen
   t = t.replace(/\bKS\b\s*$/i, "");
 
-  // nur Suffixe mit Leerzeichen-umrahmtem Strich kappen: " - ..." oder " – ..."
-  // (U-HE bleibt unangetastet)
+  // Suffixe " - ..." oder " – ..." kappen (U-HE bleibt unangetastet)
   t = t.replace(/\s+[-–]\s+.*$/, "");
 
   // optionale Klammern am Ende entfernen
@@ -800,6 +915,9 @@ function safeJson(x) {
 
 // Cleanup
 process.on("exit", () => {
+  try {
+    profilesWatch && profilesWatch.close();
+  } catch {}
   try {
     midiOut && midiOut.close();
   } catch {}

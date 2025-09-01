@@ -1,13 +1,582 @@
 {
   "CSS VLN 1 LONG KS": {
     "articulations": [
-      { "name": "Leg Stdrd", "note": 12 },
-      { "name": "Leg Advanced", "note": 13 },
-      { "name": "Trem", "note": 14 },
-      { "name": "Trills", "note": 16 },
-      { "name": "Harm", "note": 17 },
-      { "name": "Marcato", "note": 22 },
-      { "name": "Marc Spicc", "note": 23 }
+      { "name": "Leg Stdrd", "note": "C-1" },
+      { "name": "Leg Advanced", "note": "C#-1" },
+      { "name": "Trem", "note": "D-1" },
+      { "name": "Trills", "note": "E-1" },
+      { "name": "Harm", "note": "F-1" },
+      { "name": "Marcato", "note": "A#-1" },
+      { "name": "Marc Spicc", "note": "B-1" }
+    ]
+  },
+
+  "CSS VLN 2 LONG KS": {
+    "articulations": [
+      { "name": "Leg Stdrd", "note": "C-1" },
+      { "name": "Leg Advanced", "note": "C#-1" },
+      { "name": "Trem", "note": "D-1" },
+      { "name": "Trills", "note": "E-1" },
+      { "name": "Harm", "note": "F-1" },
+      { "name": "Marcato", "note": "A#-1" },
+      { "name": "Marc Spicc", "note": "B-1" }
+    ]
+  },
+
+  "CSS VLA LONG KS": {
+    "articulations": [
+      { "name": "Leg Stdrd", "note": "C-1" },
+      { "name": "Leg Advanced", "note": "C#-1" },
+      { "name": "Trem", "note": "D-1" },
+      { "name": "Trills", "note": "E-1" },
+      { "name": "Harm", "note": "F-1" },
+      { "name": "Marcato", "note": "A#-1" },
+      { "name": "Marc Spicc", "note": "B-1" }
+    ]
+  },
+
+  "CSS CEL LONG KS": {
+    "articulations": [
+      { "name": "Leg Stdrd", "note": "C-1" },
+      { "name": "Leg Advanced", "note": "C#-1" },
+      { "name": "Trem", "note": "D-1" },
+      { "name": "Trills", "note": "E-1" },
+      { "name": "Harm", "note": "F-1" },
+      { "name": "Marcato", "note": "A#-1" },
+      { "name": "Marc Spicc", "note": "B-1" }
+    ]
+  },
+
+  "CSS DB LONG KS": {
+    "articulations": [
+      { "name": "Leg Stdrd", "note": "C-1" },
+      { "name": "Leg Advanced", "note": "C#-1" },
+      { "name": "Trem", "note": "D-1" },
+      { "name": "Trills", "note": "E-1" },
+      { "name": "Marcato", "note": "A#-1" },
+      { "name": "Marc Spicc", "note": "B-1" }
+    ]
+  },
+
+  "CSS VLN 1 SHORT KS": {
+    "articulations": [
+      { "name": "Measured Trem", "note": "D#-1" },
+      { "name": "Spicc", "note": "F#-1" },
+      { "name": "Stacciss", "note": "G-1" },
+      { "name": "Stacc", "note": "G#-1" },
+      { "name": "Sfz", "note": "A-1" },
+      { "name": "Pizz", "note": "C-0" },
+      { "name": "Bartok", "note": "C#-0" },
+      { "name": "Col Legno", "note": "D-0" }
+    ]
+  },
+
+  "CSS VLN 2 SHORT KS": {
+    "articulations": [
+      { "name": "Measured Trem", "note": "D#-1" },
+      { "name": "Spicc", "note": "F#-1" },
+      { "name": "Stacciss", "note": "G-1" },
+      { "name": "Stacc", "note": "G#-1" },
+      { "name": "Sfz", "note": "A-1" },
+      { "name": "Pizz", "note": "C-0" },
+      { "name": "Bartok", "note": "C#-0" },
+      { "name": "Col Legno", "note": "D-0" }
+    ]
+  },
+
+  "CSS VLA SHORT KS": {
+    "articulations": [
+      { "name": "Measured Trem", "note": "D#-1" },
+      { "name": "Spicc", "note": "F#-1" },
+      { "name": "Stacciss", "note": "G-1" },
+      { "name": "Stacc", "note": "G#-1" },
+      { "name": "Sfz", "note": "A-1" },
+      { "name": "Pizz", "note": "C-0" },
+      { "name": "Bartok", "note": "C#-0" },
+      { "name": "Col Legno", "note": "D-0" }
+    ]
+  },
+
+  "CSS CEL SHORT KS": {
+    "articulations": [
+      { "name": "Measured Trem", "note": "D#-1" },
+      { "name": "Spicc", "note": "F#-1" },
+      { "name": "Stacciss", "note": "G-1" },
+      { "name": "Stacc", "note": "G#-1" },
+      { "name": "Sfz", "note": "A-1" },
+      { "name": "Pizz", "note": "C-0" },
+      { "name": "Bartok", "note": "C#-0" },
+      { "name": "Col Legno", "note": "D-0" }
+    ]
+  },
+
+  "CSS DB SHORT KS": {
+    "articulations": [
+      { "name": "Measured Trem", "note": "D#-1" },
+      { "name": "Spicc", "note": "F#-1" },
+      { "name": "Stacciss", "note": "G-1" },
+      { "name": "Stacc", "note": "G#-1" },
+      { "name": "Sfz", "note": "A-1" },
+      { "name": "Pizz", "note": "C-0" },
+      { "name": "Bartok", "note": "C#-0" },
+      { "name": "Col Legno", "note": "D-0" }
+    ]
+  },
+
+  "AI JGR VLN 1 LONG KS": {
+    "articulations": [
+      { "name": "Leg", "note": "C-1" },
+      { "name": "Sus", "note": "C#-1" },
+      { "name": "Trem", "note": "D-1" }
+    ]
+  },
+
+  "AI JGR VLN 2 LONG KS": {
+    "articulations": [
+      { "name": "Leg", "note": "C-1" },
+      { "name": "Sus", "note": "C#-1" },
+      { "name": "Trem", "note": "D-1" }
+    ]
+  },
+
+  "AI JGR VLA LONG KS": {
+    "articulations": [
+      { "name": "Leg", "note": "C-1" },
+      { "name": "Sus", "note": "C#-1" },
+      { "name": "Trem", "note": "D-1" }
+    ]
+  },
+
+  "AI JGR CEL LONG KS": {
+    "articulations": [
+      { "name": "Leg", "note": "C-1" },
+      { "name": "Sus", "note": "C#-1" },
+      { "name": "Trem", "note": "D-1" }
+    ]
+  },
+
+  "AI JGR DB LONG KS": {
+    "articulations": [
+      { "name": "Leg", "note": "C-1" },
+      { "name": "Sus", "note": "C#-1" },
+      { "name": "Trem", "note": "D-1" }
+    ]
+  },
+
+  "AI JGR ENS LONG KS": {
+    "articulations": [
+      { "name": "Leg", "note": "C-1" },
+      { "name": "Sus", "note": "C#-1" },
+      { "name": "Trem", "note": "D-1" }
+    ]
+  },
+
+  "AI JGR VLN 1 SHORT KS": {
+    "articulations": [
+      { "name": "Spiccato", "note": "D#-1" },
+      { "name": "Staccato", "note": "E-1" },
+      { "name": "Portato", "note": "F-1" },
+      { "name": "Col Legno", "note": "F#-1" },
+      { "name": "Bartok Pizz", "note": "G-1" }
+    ]
+  },
+
+  "AI JGR VLN 2 SHORT KS": {
+    "articulations": [
+      { "name": "Spiccato", "note": "D#-1" },
+      { "name": "Staccato", "note": "E-1" },
+      { "name": "Portato", "note": "F-1" },
+      { "name": "Col Legno", "note": "F#-1" },
+      { "name": "Bartok Pizz", "note": "G-1" }
+    ]
+  },
+
+  "AI JGR VLA SHORT KS": {
+    "articulations": [
+      { "name": "Spiccato", "note": "D#-1" },
+      { "name": "Staccato", "note": "E-1" },
+      { "name": "Portato", "note": "F-1" },
+      { "name": "Col Legno", "note": "F#-1" },
+      { "name": "Bartok Pizz", "note": "G-1" }
+    ]
+  },
+
+  "AI JGR CEL SHORT KS": {
+    "articulations": [
+      { "name": "Spiccato", "note": "D#-1" },
+      { "name": "Staccato", "note": "E-1" },
+      { "name": "Portato", "note": "F-1" },
+      { "name": "Col Legno", "note": "F#-1" },
+      { "name": "Bartok Pizz", "note": "G-1" }
+    ]
+  },
+
+  "AI JGR DB SHORT KS": {
+    "articulations": [
+      { "name": "Spiccato", "note": "D#-1" },
+      { "name": "Staccato", "note": "E-1" },
+      { "name": "Portato", "note": "F-1" },
+      { "name": "Col Legno", "note": "F#-1" },
+      { "name": "Bartok Pizz", "note": "G-1" }
+    ]
+  },
+
+  "AI JGR ENS SHORT KS": {
+    "articulations": [
+      { "name": "Spiccato", "note": "D#-1" },
+      { "name": "Staccato", "note": "E-1" },
+      { "name": "Portato", "note": "F-1" },
+      { "name": "Col Legno", "note": "F#-1" },
+      { "name": "Bartok Pizz", "note": "G-1" }
+    ]
+  },
+
+  "MA1 HI LONG KS": {
+    "articulations": [
+      { "name": "Leg 8va", "note": "C-0" },
+      { "name": "Sus", "note": "C#-0" },
+      { "name": "Marc Long", "note": "D-0" },
+      { "name": "Marc SHRT", "note": "D#-0" },
+      { "name": "Trem", "note": "E-0" },
+      { "name": "Cres Long", "note": "F-0" },
+      { "name": "Cres Short", "note": "F#-0" },
+      { "name": "Swells", "note": "G-0" },
+      { "name": "Gliss Up", "note": "G#-0" },
+      { "name": "Gliss Clstr", "note": "A-0" }
+    ]
+  },
+
+  "MA1 Lo LONG KS": {
+    "articulations": [
+      { "name": "Leg 8va", "note": "C-0" },
+      { "name": "Sus", "note": "C#-0" },
+      { "name": "Marc Long", "note": "D-0" },
+      { "name": "Marc SHRT", "note": "D#-0" },
+      { "name": "Trem", "note": "E-0" },
+      { "name": "Cres Long", "note": "F-0" },
+      { "name": "Cres Short", "note": "F#-0" },
+      { "name": "Swells", "note": "G-0" },
+      { "name": "Gliss Up", "note": "G#-0" }
+    ]
+  },
+
+  "MA1 HI SHORT KS": {
+    "articulations": [
+      { "name": "Spicc 8va", "note": "C-0" },
+      { "name": "Spicc", "note": "C#-0" },
+      { "name": "Spicc Blurred", "note": "D-0" },
+      { "name": "Bartok Pizz", "note": "D#-0" }
+    ]
+  },
+
+  "MA1 STR LO SHORT KS": {
+    "articulations": [
+      { "name": "Spicc", "note": "C-0" },
+      { "name": "Bartok Pizz", "note": "C#-0" }
+    ]
+  },
+
+  "BS EMOTIONAL CELLO KS": {
+    "articulations": [
+      { "name": "Spicc & Frog", "note": "C-2" },
+      { "name": "Stacc", "note": "C#-2" },
+      { "name": "Fast Spicc", "note": "D-2" },
+      { "name": "Frog Monster", "note": "D#-2" },
+      { "name": "Pizz", "note": "E-2" },
+      { "name": "Delicate", "note": "F-2" },
+      { "name": "Delicate Fast", "note": "F#-2" },
+      { "name": "Proud Vib", "note": "G-2" },
+      { "name": "Hero Vib", "note": "G#-2" },
+      { "name": "Martele Nv 8PR", "note": "A-2" },
+      { "name": "Martele Vib 4PR", "note": "A#-2" },
+      { "name": "Pickup", "note": "B-2" },
+      { "name": "Fortepiano", "note": "C-1" },
+      { "name": "Vivid", "note": "C#-1" },
+      { "name": "Paganini Run", "note": "D-1" },
+      { "name": "Moderate 2", "note": "D#-1" },
+      { "name": "Sus Nonvib XFD", "note": "E-1" },
+      { "name": "Expressive XFD", "note": "F-1" },
+      { "name": "Pastorale", "note": "F#-1" },
+      { "name": "Pastorale Slow", "note": "G-1" },
+      { "name": "Trem XFD", "note": "G#-1" },
+      { "name": "Trill HT", "note": "A-1" },
+      { "name": "Trill WT", "note": "A#-1" }
+    ]
+  },
+
+  "MA1 HRNS A9 KS": {
+    "articulations": [
+      { "name": "Leg", "note": "C6" },
+      { "name": "Sus", "note": "C#6" },
+      { "name": "Marc LNG", "note": "D6" },
+      { "name": "Marc SHRT", "note": "D#6" },
+      { "name": "Stacc", "note": "E6" },
+      { "name": "STACC CLSTR", "note": "F6" },
+      { "name": "Cres LNG", "note": "F#6" },
+      { "name": "Cres SHRT", "note": "G6" },
+      { "name": "Cres FLTR", "note": "G#6" },
+      { "name": "Cres LNG CLSTR", "note": "A6" },
+      { "name": "Cres SHRT CLSTR", "note": "A#6" },
+      { "name": "Swell LNG", "note": "B6" },
+      { "name": "Swell SHRT", "note": "C7" },
+      { "name": "Oct Rips", "note": "C#7" }
+    ]
+  },
+
+  "MA1 HRNS A3 KS": {
+    "articulations": [
+      { "name": "Sus", "note": "C6" },
+      { "name": "Marc LNG", "note": "C#6" },
+      { "name": "Marc SHRT", "note": "D6" },
+      { "name": "Stacc", "note": "D#6" },
+      { "name": "Cres LNG", "note": "E6" },
+      { "name": "Cres SHRT", "note": "F6" },
+      { "name": "Cres FLTR", "note": "F#6" },
+      { "name": "Swell LNG", "note": "G6" },
+      { "name": "Swell SHRT", "note": "G#6" }
+    ]
+  },
+
+  "MA1 TRMBNS A3 KS": {
+    "articulations": [
+      { "name": "Sus", "note": "C6" },
+      { "name": "Marc LNG", "note": "C#6" },
+      { "name": "Marc SHRT", "note": "D6" },
+      { "name": "Stacc", "note": "D#6" },
+      { "name": "Cres LNG", "note": "E6" },
+      { "name": "Cres SHRT", "note": "F6" },
+      { "name": "Cres FLTR", "note": "F#6" },
+      { "name": "Swell LNG", "note": "G6" },
+      { "name": "Swell SHRT", "note": "G#6" }
+    ]
+  },
+
+  "MA1 CIMB A3 KS": {
+    "articulations": [
+      { "name": "Sus", "note": "C6" },
+      { "name": "Marc LNG", "note": "C#6" },
+      { "name": "Marc SHRT", "note": "D6" },
+      { "name": "Stacc", "note": "D#6" },
+      { "name": "Cres LNG", "note": "E6" },
+      { "name": "Cres SHRT", "note": "F6" },
+      { "name": "Cres FLTR", "note": "F#6" },
+      { "name": "Swells", "note": "G6" }
+    ]
+  },
+
+  "MA1 TUB A3 KS": {
+    "articulations": [
+      { "name": "Sus", "note": "C6" },
+      { "name": "Marc LNG", "note": "C#6" },
+      { "name": "Marc SHRT", "note": "D6" },
+      { "name": "Stacc", "note": "D#6" },
+      { "name": "Cres LNG", "note": "E6" },
+      { "name": "Cres SHRT", "note": "F6" },
+      { "name": "Cres FLTR", "note": "F#6" },
+      { "name": "Swells", "note": "G6" }
+    ]
+  },
+
+  "AI JGR 6 HRNS KS": {
+    "articulations": [
+      { "name": "Leg", "note": "C-1" },
+      { "name": "Sus", "note": "C#-1" },
+      { "name": "Stacciss", "note": "D-1" },
+      { "name": "Stacc", "note": "D#-1" },
+      { "name": "Port", "note": "E-1" },
+      { "name": "Rips", "note": "F-1" }
+    ]
+  },
+
+  "AI TALOS 12 HRNS KS": {
+    "articulations": [
+      { "name": "Sus", "note": "C-1" },
+      { "name": "Stacciss", "note": "C#-1" }
+    ]
+  },
+
+  "AI JGR 3 TRPTS KS": {
+    "articulations": [
+      { "name": "Leg", "note": "C-1" },
+      { "name": "Sus", "note": "C#-1" },
+      { "name": "Stacciss", "note": "D-1" },
+      { "name": "Stacc", "note": "D#-1" },
+      { "name": "Port", "note": "E-1" }
+    ]
+  },
+
+  "AI JGR TRBNS KS": {
+    "articulations": [
+      { "name": "Sus", "note": "C#-1" },
+      { "name": "Stacciss", "note": "D-1" },
+      { "name": "Stacc", "note": "D#-1" }
+    ]
+  },
+
+  "AI JGR TUBA KS": {
+    "articulations": [
+      { "name": "Sus", "note": "C#-1" },
+      { "name": "Stacciss", "note": "D-1" },
+      { "name": "Stacc", "note": "D#-1" }
+    ]
+  },
+
+  "AI TALOS LOW BRS KS": {
+    "articulations": [
+      { "name": "Sus", "note": "C-1" },
+      { "name": "Stacciss", "note": "C#-1" }
+    ]
+  },
+
+  "TRL HORDE 1 SHORT KS": {
+    "articulations": [
+      { "name": "Stacc MW", "note": "C3" },
+      { "name": "Marc SHRT MW", "note": "C#3" },
+      { "name": "Marc LNG MW", "note": "D3" },
+      { "name": "Stacc", "note": "D#3" },
+      { "name": "Marc LNG", "note": "E3" },
+      { "name": "Marc SHRT", "note": "F3" }
+    ]
+  },
+
+  "SSW FLUTE SOLO KS": {
+    "articulations": [
+      { "name": "Sus Vib All", "note": "C-1" },
+      { "name": "FLTR Tongue", "note": "C#-1" },
+      { "name": "Staccato", "note": "D-1" },
+      { "name": "Stac DBL Tongue", "note": "D#-1" },
+      { "name": "CRESC", "note": "E-1" },
+      { "name": " DECRSC", "note": "F-1" },
+      { "name": " Swell", "note": "F#-1" }
+    ]
+  },
+
+  "SSW FLUTE A2 KS": {
+    "articulations": [
+      { "name": "Sus Vib All", "note": "C-1" },
+      { "name": "FLTR Tongue", "note": "C#-1" },
+      { "name": "Staccato", "note": "D-1" },
+      { "name": "Stac DBL Tongue", "note": "D#-1" },
+      { "name": "CRESC", "note": "E-1" },
+      { "name": " DECRSC", "note": "F-1" },
+      { "name": " Swell Fast", "note": "F#-1" },
+      { "name": " Swell Slow", "note": "G-1" }
+    ]
+  },
+
+  "SSW OBOE SOLO KS": {
+    "articulations": [
+      { "name": "Sus All", "note": "C-1" },
+      { "name": "Sus Half Trils", "note": "C#-1" },
+      { "name": "Staccato", "note": "D-1" },
+      { "name": "Stac DBL Tongue", "note": "D#-1" },
+      { "name": "CRESC", "note": "E-1" },
+      { "name": " DECRSC", "note": "F-1" },
+      { "name": " Swell", "note": "F#-1" }
+    ]
+  },
+
+  "SSW OBOES A2 KS": {
+    "articulations": [
+      { "name": "Sus All", "note": "C-1" },
+      { "name": "SUS Vibr All", "note": "C#-1" },
+      { "name": "Staccato", "note": "D-1" },
+      { "name": "Stac DBL Tongue", "note": "D#-1" },
+      { "name": "CRESC", "note": "E-1" },
+      { "name": " DECRSC", "note": "F-1" },
+      { "name": " Swell Fast", "note": "F#-1" },
+      { "name": " Swell Slow", "note": "G-1" }
+    ]
+  },
+
+  "SSW CLARINET SOLO KS": {
+    "articulations": [
+      { "name": "Sus All", "note": "C-1" },
+      { "name": "Sus Half Trls", "note": "C#-1" },
+      { "name": "Staccato", "note": "D-1" },
+      { "name": "Stac DBL Tongue", "note": "D#-1" },
+      { "name": "CRESC", "note": "E-1" },
+      { "name": " DECRSC", "note": "F-1" },
+      { "name": " Swell", "note": "F#-1" }
+    ]
+  },
+
+  "SSW CLARINETS A2 KS": {
+    "articulations": [
+      { "name": "Sus All", "note": "C-1" },
+      { "name": "SUS MF Vibr", "note": "C#-1" },
+      { "name": "Staccato", "note": "D-1" },
+      { "name": "Stac DBL Tongue", "note": "D#-1" },
+      { "name": "CRESC", "note": "E-1" },
+      { "name": " DECRSC", "note": "F-1" },
+      { "name": " Swell Fast", "note": "F#-1" },
+      { "name": " Swell Slow", "note": "G-1" }
+    ]
+  },
+
+  "SSW SOLO BASSOON KS": {
+    "articulations": [
+      { "name": "Sus All", "note": "C-1" },
+      { "name": "Sus Half Trls", "note": "C#-1" },
+      { "name": "Staccato", "note": "D-1" },
+      { "name": "Stac DBL Tongue", "note": "D#-1" },
+      { "name": "CRESC", "note": "E-1" },
+      { "name": " DECRSC", "note": "F-1" },
+      { "name": " Swell", "note": "F#-1" }
+    ]
+  },
+
+  "SSW BASSOONS A2 KS": {
+    "articulations": [
+      { "name": "Sus All", "note": "C-1" },
+      { "name": "SUS MF Vibr", "note": "C#-1" },
+      { "name": "Staccato", "note": "D-1" },
+      { "name": "Stac DBL Tongue", "note": "D#-1" },
+      { "name": "CRESC", "note": "E-1" },
+      { "name": " DECRSC", "note": "F-1" },
+      { "name": " Swell Fast", "note": "F#-1" },
+      { "name": " Swell Slow", "note": "G-1" }
+    ]
+  },
+
+  "SSW SOLO CTRA BASSOON KS": {
+    "articulations": [
+      { "name": "Sus All", "note": "C-1" },
+      { "name": "Sus P", "note": "C#-1" },
+      { "name": "Staccato", "note": "D-1" },
+      { "name": "Stac DBL Tongue", "note": "D#-1" },
+      { "name": "CRESC", "note": "E-1" },
+      { "name": " DECRSC", "note": "F-1" },
+      { "name": " Swell", "note": "F#-1" }
+    ]
+  },
+
+  "SSW BASS WINDS KS": {
+    "articulations": [
+      { "name": "Sus All", "note": "C-1" },
+      { "name": "Growl", "note": "C#-1" },
+      { "name": "Staccato", "note": "D-1" },
+      { "name": "Stac DBL Tongue", "note": "D#-1" },
+      { "name": "CRESC", "note": "E-1" },
+      { "name": " DECRSC", "note": "F-1" },
+      { "name": " Swell Fast", "note": "F#-1" },
+      { "name": " Swell Slow", "note": "G-1" }
+    ]
+  },
+
+  "SF ALB ONE WW HI KS": {
+    "articulations": [
+      { "name": "Long", "note": "C#0" },
+      { "name": "Long Arranged", "note": "D#0" },
+      { "name": "Short", "note": "C0" },
+      { "name": "Short Arranged", "note": "D0" }
+    ]
+  },
+
+  "SF ALB ONE WW LO KS": {
+    "articulations": [
+      { "name": "Long", "note": "C#-1" },
+      { "name": "Short", "note": "C-1" }
     ]
   }
 }
