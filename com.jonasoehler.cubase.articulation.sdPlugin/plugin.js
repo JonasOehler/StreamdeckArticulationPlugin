@@ -499,10 +499,10 @@ function applyProfileForTrack(trackName) {
       Object.keys(profiles).find((k) => new RegExp(k, "i").test(raw)) || null;
     const profile = key ? profiles[key] || {} : {};
 
-    // <<------- HIER: note kann Zahl ODER String (z. B. "D#-1") sein
+    // note kann Zahl ODER String (z. B. "D#-1")
     arts = (profile.articulations || []).map((a) => ({
       name: a.name || "",
-      note: parseNoteToMidi(a.note), // konvertiert z. B. "Db0" -> 13 etc.
+      note: parseNoteToMidi(a.note),
     }));
   } else {
     w(
@@ -513,7 +513,7 @@ function applyProfileForTrack(trackName) {
   for (const [deviceId, st] of deviceState) {
     st.profileKey = hasKS ? key : null;
     st.articulations = hasKS ? arts : [];
-    st.instrumentTitle = title;
+    st.instrumentTitle = title; // voller Titel im State
     st.selectedArtIdx = null;
     w(
       `[PROFILE] KS=${hasKS ? "yes" : "no"} | Match: ${
@@ -603,9 +603,24 @@ function renderEmptyKey(context) {
   setImage(context, dataUrl);
 }
 
+// === NEW: Hilfsfunktion zum Begrenzen auf max. 5 Wörter ===
+function limitWords(text, maxWords = 5) {
+  const words = String(text || "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  if (words.length <= maxWords) return words.join(" ");
+  const cut = words.slice(0, maxWords);
+  cut[cut.length - 1] = cut[cut.length - 1] + "…"; // Ellipsis anhängen
+  return cut.join(" ");
+}
+
 function renderTitleKey(context, titleText, color = "#4B5563") {
+  // Nur max. 5 Wörter anzeigen
+  const displayTitle = limitWords(titleText, 5);
+
   const key = JSON.stringify({
-    t: titleText || "",
+    t: displayTitle || "",
     c: color || "",
     fs: TITLE_FONT_SIZE,
   });
@@ -626,7 +641,7 @@ function renderTitleKey(context, titleText, color = "#4B5563") {
   ctx.textBaseline = "alphabetic";
 
   const maxWidth = IMG_SIZE - 10;
-  const words = String(titleText || "")
+  const words = String(displayTitle || "")
     .trim()
     .split(/\s+/)
     .filter(Boolean);
